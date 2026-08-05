@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+import AddToCartButton from "@/components/AddToCartButton";
+import type { CartProduct } from "@/components/CartProvider";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
@@ -24,38 +27,63 @@ type DatabaseProduct = {
   image_url: string | null;
 };
 
-async function getProduct(id: string): Promise<DatabaseProduct | null> {
+async function getProduct(
+  id: string
+): Promise<DatabaseProduct | null> {
   const numericId = Number(id);
 
-  if (!Number.isInteger(numericId) || numericId <= 0) {
+  if (
+    !Number.isInteger(numericId) ||
+    numericId <= 0
+  ) {
     return null;
   }
 
-  const supabase = getSupabaseAdmin();
+  try {
+    const supabase = getSupabaseAdmin();
 
-  const { data, error } = await supabase
-    .from("products")
-    .select(`
-      id,
-      product_code,
-      product_name,
-      product_group,
-      purchase_price,
-      profit_margin,
-      vat,
-      sale_price,
-      stock,
-      image_url
-    `)
-    .eq("id", numericId)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from("products")
+      .select(`
+        id,
+        product_code,
+        product_name,
+        product_group,
+        purchase_price,
+        profit_margin,
+        vat,
+        sale_price,
+        stock,
+        image_url
+      `)
+      .eq("id", numericId)
+      .maybeSingle();
 
-  if (error) {
-    console.error("Ürün detay hatası:", error.message);
+    if (error) {
+      console.error(
+        "Ürün detay hatası:",
+        error.message
+      );
+
+      return null;
+    }
+
+    return data as DatabaseProduct | null;
+  } catch (error) {
+    console.error(
+      "Ürün detay bağlantı hatası:",
+      error
+    );
+
     return null;
   }
+}
 
-  return data as DatabaseProduct | null;
+function formatMoney(value: number): string {
+  return value.toLocaleString("tr-TR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default async function ProductDetailPage({
@@ -68,14 +96,43 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const salePrice = Number(product.sale_price || 0);
-  const oldPrice =
-    salePrice > 0 ? Math.round(salePrice * 1.1) : 0;
+  const salePrice = Number(
+    product.sale_price || 0
+  );
 
-  const image =
-    product.image_url || "/opar-filtre-banner.png";
+  const oldPrice =
+    salePrice > 0
+      ? Math.round(salePrice * 1.1)
+      : 0;
 
   const stock = Number(product.stock || 0);
+
+  const image =
+    product.image_url ||
+    "/opar-filtre-banner.png";
+
+  const cartProduct: CartProduct = {
+    id: product.id,
+    name:
+      product.product_name ||
+      "İsimsiz Ürün",
+    brand: "OPAR",
+    category:
+      product.product_group ||
+      "Diğer",
+    price: salePrice,
+    oldPrice,
+    oem:
+      product.product_code ||
+      "-",
+    stock,
+    vehicle: "Fiat",
+    image,
+    badge:
+      stock > 0
+        ? "Stokta"
+        : "Tükendi",
+  };
 
   return (
     <main className="container">
@@ -98,7 +155,8 @@ export default async function ProductDetailPage({
       <section
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 1fr)",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(320px, 1fr))",
           gap: "30px",
           alignItems: "start",
           padding: "20px 0 60px",
@@ -106,7 +164,8 @@ export default async function ProductDetailPage({
       >
         <div
           style={{
-            border: "1px solid #dbe3ec",
+            border:
+              "1px solid #dbe3ec",
             borderRadius: "12px",
             padding: "24px",
             minHeight: "460px",
@@ -134,14 +193,19 @@ export default async function ProductDetailPage({
               display: "inline-block",
               padding: "6px 10px",
               borderRadius: "999px",
-              background: stock > 0 ? "#047857" : "#dc0023",
+              background:
+                stock > 0
+                  ? "#047857"
+                  : "#dc0023",
               color: "#ffffff",
               fontWeight: 700,
               fontSize: "13px",
               marginBottom: "16px",
             }}
           >
-            {stock > 0 ? "Stokta" : "Tükendi"}
+            {stock > 0
+              ? "Stokta"
+              : "Tükendi"}
           </span>
 
           <h1
@@ -161,7 +225,9 @@ export default async function ProductDetailPage({
               marginBottom: "12px",
             }}
           >
-            OPAR • {product.product_group || "Diğer"}
+            OPAR •{" "}
+            {product.product_group ||
+              "Diğer"}
           </p>
 
           <p
@@ -170,7 +236,10 @@ export default async function ProductDetailPage({
               marginBottom: "14px",
             }}
           >
-            OEM: <strong>{product.product_code}</strong>
+            OEM:{" "}
+            <strong>
+              {product.product_code}
+            </strong>
           </p>
 
           <div
@@ -179,6 +248,7 @@ export default async function ProductDetailPage({
               alignItems: "baseline",
               gap: "12px",
               marginBottom: "14px",
+              flexWrap: "wrap",
             }}
           >
             <strong
@@ -187,11 +257,7 @@ export default async function ProductDetailPage({
                 color: "#0f172a",
               }}
             >
-              {salePrice.toLocaleString("tr-TR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}{" "}
-              TL
+              {formatMoney(salePrice)} TL
             </strong>
 
             {oldPrice > salePrice ? (
@@ -201,14 +267,17 @@ export default async function ProductDetailPage({
                   fontSize: "16px",
                 }}
               >
-                {oldPrice.toLocaleString("tr-TR")} TL
+                {formatMoney(oldPrice)} TL
               </del>
             ) : null}
           </div>
 
           <p
             style={{
-              color: stock > 0 ? "#047857" : "#b91c1c",
+              color:
+                stock > 0
+                  ? "#047857"
+                  : "#b91c1c",
               fontWeight: 700,
               marginBottom: "24px",
             }}
@@ -224,7 +293,9 @@ export default async function ProductDetailPage({
               marginBottom: "18px",
             }}
           >
-            <strong>Ürün Bilgileri</strong>
+            <strong>
+              Ürün Bilgileri
+            </strong>
 
             <div
               style={{
@@ -235,35 +306,41 @@ export default async function ProductDetailPage({
             >
               <span>
                 Ürün grubu:{" "}
-                {product.product_group || "Belirtilmemiş"}
+                {product.product_group ||
+                  "Belirtilmemiş"}
               </span>
 
               <span>
-                Ürün kodu: {product.product_code}
+                Ürün kodu:{" "}
+                {product.product_code}
               </span>
 
               <span>
-                KDV dahil satış fiyatıdır.
+                KDV dahil satış
+                fiyatıdır.
               </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            disabled={stock <= 0}
+          <AddToCartButton
+            product={cartProduct}
+          />
+
+          <div
             style={{
-              padding: "14px 24px",
-              border: "none",
-              borderRadius: "8px",
-              background: stock > 0 ? "#dc0023" : "#94a3b8",
-              color: "#ffffff",
-              fontWeight: 800,
-              fontSize: "16px",
-              cursor: stock > 0 ? "pointer" : "not-allowed",
+              marginTop: "12px",
             }}
           >
-            {stock > 0 ? "SEPETE EKLE" : "STOKTA YOK"}
-          </button>
+            <Link
+              href="/sepet"
+              style={{
+                color: "#0f172a",
+                fontWeight: 700,
+              }}
+            >
+              Sepete Git →
+            </Link>
+          </div>
         </div>
       </section>
     </main>
