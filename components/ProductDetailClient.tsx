@@ -26,13 +26,14 @@ export default function ProductDetailClient({
       return;
     }
 
-    const maximum = Math.max(1, product.stock);
-    const nextQuantity = Math.min(
-      maximum,
-      Math.max(1, Math.floor(value))
-    );
+    const maximum = Math.max(1, Number(product.stock || 1));
 
-    setQuantity(nextQuantity);
+    setQuantity(
+      Math.min(
+        maximum,
+        Math.max(1, Math.floor(value))
+      )
+    );
   }
 
   function handleAddToCart() {
@@ -61,7 +62,7 @@ export default function ProductDetailClient({
         <input
           type="number"
           min={1}
-          max={Math.max(1, product.stock)}
+          max={Math.max(1, Number(product.stock || 1))}
           value={quantity}
           disabled={!hasStock}
           onChange={(event) =>
