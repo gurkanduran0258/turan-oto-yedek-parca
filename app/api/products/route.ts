@@ -3,95 +3,86 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
 
-type UploadBody = {
-  fileName?: string;
-  fileType?: string;
-  fileData?: string;
+type ProductBody = {
+  product_code?: string;
+  product_name?: string;
+  product_group?: string;
+  purchase_price?: number;
+  profit_margin?: number;
+  vat?: number;
+  sale_price?: number;
+  stock?: number;
+  image_url?: string | null;
 };
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as UploadBody;
+    const body = (await request.json()) as ProductBody;
 
-    const fileName = body.fileName?.trim();
-    const fileType = body.fileType?.trim();
-    const fileData = body.fileData?.trim();
+    const productCode = body.product_code?.trim();
+    const productName = body.product_name?.trim();
 
-    if (!fileName || !fileType || !fileData) {
+    if (!productCode) {
       return NextResponse.json(
-        { error: 'Görsel bilgileri eksik gönderildi.' },
+        { error: 'Ürün kodu zorunludur.' },
         { status: 400 }
       );
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
-    if (!allowedTypes.includes(fileType)) {
+    if (!productName) {
       return NextResponse.json(
-        { error: 'Sadece JPG, PNG veya WEBP yüklenebilir.' },
+        { error: 'Parça adı zorunludur.' },
         { status: 400 }
       );
     }
-
-    const base64Data = fileData.includes(',')
-      ? fileData.split(',')[1]
-      : fileData;
-
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    if (!buffer.length) {
-      return NextResponse.json(
-        { error: 'Görsel dosyası okunamadı.' },
-        { status: 400 }
-      );
-    }
-
-    if (buffer.length > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'Görsel en fazla 5 MB olabilir.' },
-        { status: 400 }
-      );
-    }
-
-    const extension =
-      fileName.split('.').pop()?.toLowerCase() ||
-      (fileType === 'image/png'
-        ? 'png'
-        : fileType === 'image/webp'
-          ? 'webp'
-          : 'jpg');
-
-    const storagePath =
-      `products/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
     const supabase = getSupabaseAdmin();
 
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(storagePath, buffer, {
-        contentType: fileType,
-        upsert: false,
-      });
+    const productData = {
+      product_code: productCode,
+      product_name: productName,
+      product_group: body.product_group?.trim() || null,
+      purchase_price: Number(body.purchase_price) || 0,
+      profit_margin: Number(body.profit_margin) || 0,
+      vat: Number(body.vat) || 20,
+      sale_price: Number(body.sale_price) || 0,
+      stock: Number(body.stock) || 0,
+      image_url: body.image_url?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (uploadError) {
+    const { data, error } = await supabase
+      .from('products')
+      .insert(productData)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { error: 'Bu ürün kodu zaten kayıtlı.' },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
-        { error: uploadError.message },
+        { error: error.message },
         { status: 500 }
       );
     }
 
-    const { data } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(storagePath);
-
-    return NextResponse.json({
-      image_url: data.publicUrl,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        product: data,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
-        : 'Görsel yüklenemedi.';
+        : 'Ürün kaydedilemedi.';
 
     return NextResponse.json(
       { error: message },
