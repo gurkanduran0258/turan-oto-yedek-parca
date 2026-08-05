@@ -1,28 +1,48 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    if (!String(body.product_code || '').trim() || !String(body.product_name || '').trim()) {
-      return NextResponse.json({ error: 'Ürün kodu ve parça adı zorunludur.' }, { status: 400 });
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'Dosya bulunamadı.' },
+        { status: 400 }
+      );
     }
-    const payload = {
-      product_code: String(body.product_code).trim(),
-      product_name: String(body.product_name).trim(),
-      product_group: String(body.product_group || '').trim(),
-      purchase_price: Number(body.purchase_price || 0),
-      profit_margin: Number(body.profit_margin || 0),
-      vat: Number(body.vat ?? 20),
-      sale_price: Number(body.sale_price || 0),
-      stock: Number(body.stock || 0),
-      image_url: body.image_url ? String(body.image_url) : null,
-      updated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabaseAdmin.from('products').insert(payload).select().single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json(data, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Ürün eklenirken beklenmeyen hata oluştu.' }, { status: 500 });
+
+    const extension = file.name.split('.').pop() || 'jpg';
+    const fileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('product-images')
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabaseAdmin.storage
+      .from('product-images')
+      .getPublicUrl(fileName);
+
+    return NextResponse.json({
+      image_url: data.publicUrl,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Görsel yüklenemedi.';
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
