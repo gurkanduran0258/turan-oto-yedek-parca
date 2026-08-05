@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560">
+<defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#4f0b15"/><stop offset="0.58" stop-color="#9f1d2e"/><stop offset="1" stop-color="#1f2937"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-opacity=".35"/></filter></defs>
+<rect width="1400" height="560" rx="30" fill="url(#g)"/>
+<circle cx="1140" cy="280" r="210" fill="#ffffff10"/><circle cx="1140" cy="280" r="155" fill="#ffffff0d"/>
+<text x="78" y="145" font-family="Arial" font-size="28" font-weight="700" fill="#fff">TURAN OTO GÜVENCESİYLE</text>
+<text x="78" y="225" font-family="Arial" font-size="68" font-weight="900" fill="#fff">FIAT YEDEK PARÇA</text>
+<text x="78" y="292" font-family="Arial" font-size="48" font-weight="900" fill="#f6d9de">ORİJİNAL • MUADİL • HIZLI KARGO</text>
+<text x="82" y="350" font-family="Arial" font-size="24" fill="#f9e7ea">OEM numarasıyla doğru parçayı bulun</text>
+<rect x="82" y="400" width="260" height="62" rx="14" fill="#fff"/>
+<text x="120" y="440" font-family="Arial" font-size="22" font-weight="900" fill="#9f1d2e">ALIŞVERİŞE BAŞLA</text>
+<g filter="url(#s)">
+<rect x="980" y="175" width="280" height="220" rx="18" fill="#fff"/>
+<rect x="1010" y="200" width="220" height="55" rx="10" fill="#9f1d2e"/>
+<text x="1120" y="237" text-anchor="middle" font-family="Arial" font-size="27" font-weight="900" fill="#fff">OPAR</text>
+<circle cx="1080" cy="325" r="56" fill="#d8dee7"/><circle cx="1080" cy="325" r="27" fill="#9f1d2e"/>
+<rect x="1160" y="285" width="55" height="80" rx="10" fill="#d8dee7"/>
+</g></svg>

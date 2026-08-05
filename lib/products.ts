@@ -1,0 +1,93 @@
+export const products = [
+  {
+    "id": 1,
+    "name": "Fiat Egea 1.3 Multijet Filtre Bakım Seti",
+    "brand": "Opar",
+    "category": "Filtre",
+    "price": 1899.9,
+    "oldPrice": 2199.9,
+    "oem": "77364561E",
+    "stock": 24,
+    "vehicle": "Fiat Egea 2015-2024 1.3 Multijet",
+    "image": "/products/filter-set.jpg",
+    "badge": "Çok Satan"
+  },
+  {
+    "id": 2,
+    "name": "Opar Yağ Filtresi",
+    "brand": "Opar",
+    "category": "Filtre",
+    "price": 699.0,
+    "oldPrice": 749.0,
+    "oem": "55242758",
+    "stock": 58,
+    "vehicle": "Fiat Egea 1.3 Multijet",
+    "image": "/products/oil-filter.jpg",
+    "badge": "Orijinal"
+  },
+  {
+    "id": 3,
+    "name": "Opar Hava Filtresi",
+    "brand": "Opar",
+    "category": "Filtre",
+    "price": 549.0,
+    "oldPrice": 599.0,
+    "oem": "52072078E",
+    "stock": 43,
+    "vehicle": "Fiat Egea 1.3 Multijet",
+    "image": "/products/air-filter.jpg",
+    "badge": "Hızlı Kargo"
+  },
+  {
+    "id": 4,
+    "name": "Opar Polen Filtresi",
+    "brand": "Opar",
+    "category": "Filtre",
+    "price": 349.0,
+    "oldPrice": 399.0,
+    "oem": "77364561E",
+    "stock": 37,
+    "vehicle": "Fiat Egea",
+    "image": "/products/pollen-filter.jpg",
+    "badge": "Orijinal"
+  },
+  {
+    "id": 5,
+    "name": "Opar Yakıt Filtresi",
+    "brand": "Opar",
+    "category": "Filtre",
+    "price": 899.0,
+    "oldPrice": 949.0,
+    "oem": "55179909",
+    "stock": 18,
+    "vehicle": "Fiat Doblo 1.6 Multijet",
+    "image": "/products/fuel-filter.jpg",
+    "badge": "Orijinal"
+  },
+  {
+    "id": 6,
+    "name": "Fiat Egea Ön Fren Diski",
+    "brand": "Opar",
+    "category": "Fren",
+    "price": 1299.0,
+    "oldPrice": 1499.0,
+    "oem": "51896210",
+    "stock": 12,
+    "vehicle": "Fiat Egea",
+    "image": "/products/brake-disc.jpg",
+    "badge": "Kampanya"
+  },
+  {
+    "id": 7,
+    "name": "Fiat Egea Ön Amortisör Takımı",
+    "brand": "Monroe",
+    "category": "Süspansiyon",
+    "price": 1599.0,
+    "oldPrice": 1799.0,
+    "oem": "G7398",
+    "stock": 15,
+    "vehicle": "Fiat Egea",
+    "image": "/products/shock-absorber.jpg",
+    "badge": "Çok Satan"
+  }
+] as const;
