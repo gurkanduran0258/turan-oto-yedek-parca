@@ -1,6 +1,38 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/lib/products";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type CardProduct = {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  price: number;
+  oldPrice: number;
+  oem: string;
+  stock: number;
+  vehicle: string;
+  image: string;
+  badge: string;
+};
+
+type DatabaseProduct = {
+  id: number;
+  product_code: string;
+  product_name: string;
+  product_group: string | null;
+  purchase_price: number | string | null;
+  profit_margin: number | string | null;
+  vat: number | string | null;
+  sale_price: number | string | null;
+  stock: number | null;
+  image_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
 
 const cats = [
   ["⚙️", "Motor"],
@@ -13,7 +45,65 @@ const cats = [
   ["⚙", "Şanzıman"],
 ];
 
-export default function Home() {
+async function getFeaturedProducts(): Promise<CardProduct[]> {
+  try {
+    const supabase = getSupabaseAdmin();
+
+    const { data, error } = await supabase
+      .from("products")
+      .select(`
+        id,
+        product_code,
+        product_name,
+        product_group,
+        purchase_price,
+        profit_margin,
+        vat,
+        sale_price,
+        stock,
+        image_url,
+        created_at,
+        updated_at
+      `)
+      .order("updated_at", { ascending: false })
+      .limit(8);
+
+    if (error) {
+      console.error("Ürünler alınamadı:", error.message);
+      return [];
+    }
+
+    return ((data || []) as DatabaseProduct[]).map((product) => {
+      const price = Number(product.sale_price || 0);
+
+      return {
+        id: product.id,
+        name: product.product_name || "Ürün",
+        brand: "OPAR",
+        category: product.product_group || "Diğer",
+        price,
+        oldPrice: price > 0 ? Math.round(price * 1.1) : 0,
+        oem: product.product_code || "-",
+        stock: Number(product.stock || 0),
+        vehicle: "Fiat",
+        image:
+          product.image_url ||
+          "/opar-filtre-banner.png",
+        badge:
+          Number(product.stock || 0) > 0
+            ? "Stokta"
+            : "Tükendi",
+      };
+    });
+  } catch (error) {
+    console.error("Ana sayfa ürün hatası:", error);
+    return [];
+  }
+}
+
+export default async function Home() {
+  const products = await getFeaturedProducts();
+
   return (
     <main className="container">
       <section className="heroGrid">
@@ -103,7 +193,10 @@ export default function Home() {
 
       <section className="categoryStrip">
         {cats.map(([icon, name]) => (
-          <Link href="/urunler" key={name}>
+          <Link
+            href={`/urunler?kategori=${encodeURIComponent(name)}`}
+            key={name}
+          >
             <span>{icon}</span>
             <b>{name}</b>
           </Link>
@@ -112,7 +205,10 @@ export default function Home() {
 
       <div className="sectionHead">
         <h2>ÖNE ÇIKAN ÜRÜNLER</h2>
-        <Link href="/urunler">Tümünü Gör ›</Link>
+
+        <Link href="/urunler">
+          Tümünü Gör ›
+        </Link>
       </div>
 
       <section className="productsLayout">
@@ -120,7 +216,10 @@ export default function Home() {
           <h3>KATEGORİLER</h3>
 
           {cats.map(([, name]) => (
-            <Link href="/urunler" key={name}>
+            <Link
+              href={`/urunler?kategori=${encodeURIComponent(name)}`}
+              key={name}
+            >
               {name}
               <span>›</span>
             </Link>
@@ -128,9 +227,26 @@ export default function Home() {
         </aside>
 
         <div className="productGrid">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {products.length > 0 ? (
+            products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+              />
+            ))
+          ) : (
+            <div
+              style={{
+                width: "100%",
+                padding: "40px",
+                textAlign: "center",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+              }}
+            >
+              Henüz ürün bulunmuyor.
+            </div>
+          )}
         </div>
       </section>
 
