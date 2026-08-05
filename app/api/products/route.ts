@@ -5,23 +5,47 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const supabaseAdmin = getSupabaseAdmin();
+    const contentType = request.headers.get('content-type') || '';
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-
-    if (!file) {
+    if (!contentType.includes('multipart/form-data')) {
       return NextResponse.json(
-        { error: 'Dosya bulunamadı.' },
+        { error: 'Görsel yükleme isteği form-data olarak gönderilmedi.' },
         { status: 400 }
       );
     }
 
-    const extension = file.name.split('.').pop() || 'jpg';
-    const fileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { error: 'Görsel dosyası bulunamadı.' },
+        { status: 400 }
+      );
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Sadece JPG, PNG veya WEBP yüklenebilir.' },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'Görsel en fazla 5 MB olabilir.' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabaseAdmin();
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `products/${Date.now()}-${crypto.randomUUID()}.${extension}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const { error: uploadError } = await supabaseAdmin.storage
+    const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(fileName, buffer, {
         contentType: file.type,
@@ -29,10 +53,13 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      throw uploadError;
+      return NextResponse.json(
+        { error: uploadError.message },
+        { status: 500 }
+      );
     }
 
-    const { data } = supabaseAdmin.storage
+    const { data } = supabase.storage
       .from('product-images')
       .getPublicUrl(fileName);
 
