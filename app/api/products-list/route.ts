@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
 
     const pageSize = Math.min(
       100,
-      Math.max(1, Number(searchParams.get("pageSize") || 25))
+      Math.max(
+        1,
+        Number(searchParams.get("pageSize") || 25)
+      )
     );
 
     const search = (
@@ -66,8 +69,6 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error("Ürün listeleme hatası:", error);
-
       return NextResponse.json(
         {
           error: error.message,
@@ -101,8 +102,6 @@ export async function GET(request: NextRequest) {
       error instanceof Error
         ? error.message
         : "Ürünler getirilemedi.";
-
-    console.error("Products list API:", error);
 
     return NextResponse.json(
       {
