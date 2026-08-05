@@ -39,3 +39,5 @@ Sonraki backend aşaması:
 - Yeni Turan Oto Fiat temalı logo eklendi.
 - Ana sayfadaki site-içinde-site ekran görüntüsü kaldırıldı.
 - Yerine Opar filtre kitli profesyonel kampanya alanı eklendi.
+
+- Şeffaf arka planlı yeni Turan Oto logosu eklendi ve header/footer boyutları büyütüldü.
