@@ -16,7 +16,7 @@ export default function Header() {
       </div>
       <header className="header">
         <div className="container headerInner">
-          <Link href="/" className="logo"><img src="/logo.svg" alt="Turan Oto Yedek Parça" /></Link>
+          <Link href="/" className="logo"><img src="/turan-oto-logo.png" alt="Turan Oto Yedek Parça" /></Link>
           <form className="search" action="/urunler">
             <input name="q" placeholder="OEM No, ürün adı veya şasi numarası ile arayın..." />
             <button aria-label="Ara"><Search size={22} /></button>

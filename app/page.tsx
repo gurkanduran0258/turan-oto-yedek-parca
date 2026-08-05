@@ -19,7 +19,17 @@ export default function Home() {
           <select><option>Motor Seçin</option><option>1.3 Multijet</option><option>1.4 Fire</option></select>
           <Link href="/urunler" className="primary">PARÇALARI LİSTELE</Link>
         </aside>
-        <div className="heroImage"><img src="/homepage-reference.png" alt="Turan Oto ana sayfa" /></div>
+        <div className="heroImage heroCampaign">
+          <div className="heroCopy">
+            <span>TURAN OTO GÜVENCESİYLE</span>
+            <h1>ORİJİNAL FIAT<br/><b>YEDEK PARÇA</b></h1>
+            <p>Opar filtre kitleri, bakım ürünleri ve mekanik parçalar</p>
+            <Link href="/urunler" className="heroButton">ALIŞVERİŞE BAŞLA</Link>
+          </div>
+          <div className="heroVisual">
+            <img src="/opar-filtre-banner.png" alt="Opar filtre bakım seti" />
+          </div>
+        </div>
         <aside className="trustBox">
           <div>🚚 <b>Aynı Gün Kargo</b><small>16:00'a kadar</small></div>
           <div>🛡️ <b>%100 Orijinal</b><small>Kalite garantisi</small></div>

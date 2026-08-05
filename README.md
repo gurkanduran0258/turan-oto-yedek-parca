@@ -33,3 +33,9 @@ Sonraki backend aşaması:
 - Kullanıcı/adres/sipariş tabloları
 - iyzico veya PayTR
 - Gerçek admin CRUD
+
+
+## Güncelleme
+- Yeni Turan Oto Fiat temalı logo eklendi.
+- Ana sayfadaki site-içinde-site ekran görüntüsü kaldırıldı.
+- Yerine Opar filtre kitli profesyonel kampanya alanı eklendi.
