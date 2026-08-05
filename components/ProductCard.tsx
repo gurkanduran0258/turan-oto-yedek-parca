@@ -1,35 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useCart, type CartProduct } from "./CartProvider";
+import {
+  useCart,
+  type CartProduct,
+} from "@/components/CartProvider";
 
-type Product = CartProduct;
+type ProductCardProps = {
+  product: CartProduct;
+};
 
 export default function ProductCard({
   product,
-}: {
-  product: Product;
-}) {
+}: ProductCardProps) {
   const { add } = useCart();
 
-  const hasStock = product.stock > 0;
+  const hasStock = Number(product.stock || 0) > 0;
 
   return (
     <article className="productCard">
       <span className="badge">
-        {product.badge || (hasStock ? "Stokta" : "Tükendi")}
+        {product.badge ||
+          (hasStock ? "Stokta" : "Tükendi")}
       </span>
 
       <Link href={`/urun/${product.id}`}>
         <img
-          src={product.image}
+          src={
+            product.image ||
+            "/opar-filtre-banner.png"
+          }
           alt={product.name}
         />
 
         <h3>{product.name}</h3>
       </Link>
 
-      <small>{product.brand}</small>
+      <small>{product.brand || "OPAR"}</small>
 
       <p className="oem">
         OEM: {product.oem}
@@ -37,16 +44,22 @@ export default function ProductCard({
 
       <div className="priceRow">
         <strong>
-          {Number(product.price).toLocaleString("tr-TR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}{" "}
+          {Number(product.price || 0).toLocaleString(
+            "tr-TR",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }
+          )}{" "}
           TL
         </strong>
 
-        {product.oldPrice > product.price ? (
+        {Number(product.oldPrice || 0) >
+        Number(product.price || 0) ? (
           <del>
-            {Number(product.oldPrice).toLocaleString("tr-TR", {
+            {Number(
+              product.oldPrice || 0
+            ).toLocaleString("tr-TR", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}{" "}
@@ -64,7 +77,9 @@ export default function ProductCard({
         disabled={!hasStock}
         onClick={() => add(product)}
       >
-        {hasStock ? "Sepete Ekle" : "Stokta Yok"}
+        {hasStock
+          ? "Sepete Ekle"
+          : "Stokta Yok"}
       </button>
     </article>
   );
