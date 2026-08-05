@@ -1,9 +1,6 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import { products } from "@/lib/products";
 
 const cats = [
   ["⚙️", "Motor"],
@@ -16,107 +13,7 @@ const cats = [
   ["⚙", "Şanzıman"],
 ];
 
-type DatabaseProduct = {
-  id: number;
-  product_code: string;
-  product_name: string;
-  product_group: string | null;
-  purchase_price: number | string | null;
-  profit_margin: number | string | null;
-  vat: number | string | null;
-  sale_price: number | string | null;
-  stock: number | null;
-  image_url: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
-
-async function getFeaturedProducts() {
-  const supabase = getSupabaseAdmin();
-
-  const { data, error } = await supabase
-    .from("products")
-    .select(
-      `
-        id,
-        product_code,
-        product_name,
-        product_group,
-        purchase_price,
-        profit_margin,
-        vat,
-        sale_price,
-        stock,
-        image_url,
-        created_at,
-        updated_at
-      `
-    )
-    .order("updated_at", { ascending: false })
-    .limit(8);
-
-  if (error) {
-    console.error("Ana sayfa ürünleri alınamadı:", error.message);
-    return [];
-  }
-
-  return ((data || []) as DatabaseProduct[]).map((product) => {
-    const salePrice = Number(product.sale_price || 0);
-    const purchasePrice = Number(product.purchase_price || 0);
-
-    /*
-      ProductCard eski ürün yapısını kullanıyor olabilir.
-      Bu nedenle hem eski hem yeni alan adlarını birlikte gönderiyoruz.
-    */
-    return {
-      id: product.id,
-
-      code: product.product_code,
-      product_code: product.product_code,
-      productCode: product.product_code,
-      oem: product.product_code,
-
-      name: product.product_name,
-      title: product.product_name,
-      product_name: product.product_name,
-
-      category: product.product_group || "Diğer",
-      group: product.product_group || "Diğer",
-      product_group: product.product_group || "Diğer",
-
-      price: salePrice,
-      salePrice,
-      sale_price: salePrice,
-
-      purchasePrice,
-      purchase_price: purchasePrice,
-
-      oldPrice: null,
-      old_price: null,
-
-      stock: Number(product.stock || 0),
-
-      image:
-        product.image_url ||
-        "/urun-placeholder.png",
-      imageUrl:
-        product.image_url ||
-        "/urun-placeholder.png",
-      image_url:
-        product.image_url ||
-        "/urun-placeholder.png",
-
-      slug: String(product.product_code)
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-    };
-  });
-}
-
-export default async function Home() {
-  const products = await getFeaturedProducts();
-
+export default function Home() {
   return (
     <main className="container">
       <section className="heroGrid">
@@ -206,10 +103,7 @@ export default async function Home() {
 
       <section className="categoryStrip">
         {cats.map(([icon, name]) => (
-          <Link
-            href={`/urunler?kategori=${encodeURIComponent(name)}`}
-            key={name}
-          >
+          <Link href="/urunler" key={name}>
             <span>{icon}</span>
             <b>{name}</b>
           </Link>
@@ -218,10 +112,7 @@ export default async function Home() {
 
       <div className="sectionHead">
         <h2>ÖNE ÇIKAN ÜRÜNLER</h2>
-
-        <Link href="/urunler">
-          Tümünü Gör ›
-        </Link>
+        <Link href="/urunler">Tümünü Gör ›</Link>
       </div>
 
       <section className="productsLayout">
@@ -229,10 +120,7 @@ export default async function Home() {
           <h3>KATEGORİLER</h3>
 
           {cats.map(([, name]) => (
-            <Link
-              href={`/urunler?kategori=${encodeURIComponent(name)}`}
-              key={name}
-            >
+            <Link href="/urunler" key={name}>
               {name}
               <span>›</span>
             </Link>
@@ -240,26 +128,9 @@ export default async function Home() {
         </aside>
 
         <div className="productGrid">
-          {products.length > 0 ? (
-            products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product as any}
-              />
-            ))
-          ) : (
-            <div
-              style={{
-                padding: "40px",
-                textAlign: "center",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                width: "100%",
-              }}
-            >
-              Henüz ürün bulunmuyor.
-            </div>
-          )}
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
       </section>
 
