@@ -1,9 +1,12 @@
 'use client';
 
-import {
+import type {
   ChangeEvent,
   CSSProperties,
   FormEvent,
+} from 'react';
+
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -43,6 +46,8 @@ type ProductForm = {
   image_url: string;
 };
 
+const PAGE_SIZE = 25;
+
 const EMPTY_FORM: ProductForm = {
   product_code: '',
   product_name: '',
@@ -55,10 +60,13 @@ const EMPTY_FORM: ProductForm = {
   image_url: '',
 };
 
-function money(value: number | string | null | undefined): string {
+function formatMoney(
+  value: number | string | null | undefined
+): string {
   return new Intl.NumberFormat('tr-TR', {
     style: 'currency',
     currency: 'TRY',
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 }
@@ -70,9 +78,10 @@ function fileToBase64(file: File): Promise<string> {
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         resolve(reader.result);
-      } else {
-        reject(new Error('Görsel okunamadı.'));
+        return;
       }
+
+      reject(new Error('Görsel okunamadı.'));
     };
 
     reader.onerror = () => {
@@ -83,19 +92,41 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+async function readJsonResponse<T>(
+  response: Response
+): Promise<T> {
+  const responseText = await response.text();
+
+  if (!responseText.trim()) {
+    throw new Error(
+      `Sunucu boş cevap verdi. HTTP: ${response.status}`
+    );
+  }
+
+  try {
+    return JSON.parse(responseText) as T;
+  } catch {
+    console.error('Sunucudan gelen geçersiz cevap:', responseText);
+
+    throw new Error(
+      `Sunucudan geçersiz cevap geldi. HTTP: ${response.status}`
+    );
+  }
+}
+
 export default function ProductsAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
 
   const [page, setPage] = useState(1);
-  const pageSize = 25;
 
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] =
+    useState<number | null>(null);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -104,12 +135,16 @@ export default function ProductsAdminPage() {
   const [editingProduct, setEditingProduct] =
     useState<Product | null>(null);
 
-  const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [form, setForm] =
+    useState<ProductForm>(EMPTY_FORM);
+
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
+
   const [previewUrl, setPreviewUrl] = useState('');
 
   const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(total / pageSize));
+    return Math.max(1, Math.ceil(total / PAGE_SIZE));
   }, [total]);
 
   const loadProducts = useCallback(async () => {
@@ -119,7 +154,7 @@ export default function ProductsAdminPage() {
 
       const params = new URLSearchParams({
         page: String(page),
-        pageSize: String(pageSize),
+        pageSize: String(PAGE_SIZE),
       });
 
       if (activeSearch.trim()) {
@@ -134,13 +169,21 @@ export default function ProductsAdminPage() {
         }
       );
 
-      const result = (await response.json()) as ProductListResponse;
+      const result =
+        await readJsonResponse<ProductListResponse>(response);
 
       if (!response.ok) {
-        throw new Error(result.error || 'Ürünler getirilemedi.');
+        throw new Error(
+          result.error || 'Ürünler getirilemedi.'
+        );
       }
 
-      setProducts(Array.isArray(result.products) ? result.products : []);
+      setProducts(
+        Array.isArray(result.products)
+          ? result.products
+          : []
+      );
+
       setTotal(Number(result.total || 0));
     } catch (requestError) {
       setProducts([]);
@@ -173,6 +216,18 @@ export default function ProductsAdminPage() {
     setSuccess('');
   }
 
+  function resetModalState() {
+    if (previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setModalOpen(false);
+    setEditingProduct(null);
+    setForm(EMPTY_FORM);
+    setSelectedFile(null);
+    setPreviewUrl('');
+  }
+
   function openNewProduct() {
     clearMessages();
 
@@ -192,8 +247,12 @@ export default function ProductsAdminPage() {
       product_code: product.product_code || '',
       product_name: product.product_name || '',
       product_group: product.product_group || '',
-      purchase_price: String(product.purchase_price ?? ''),
-      profit_margin: String(product.profit_margin ?? 30),
+      purchase_price: String(
+        product.purchase_price ?? ''
+      ),
+      profit_margin: String(
+        product.profit_margin ?? 30
+      ),
       vat: String(product.vat ?? 20),
       sale_price: String(product.sale_price ?? ''),
       stock: String(product.stock ?? 0),
@@ -210,18 +269,13 @@ export default function ProductsAdminPage() {
       return;
     }
 
-    if (previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    setModalOpen(false);
-    setEditingProduct(null);
-    setForm(EMPTY_FORM);
-    setSelectedFile(null);
-    setPreviewUrl('');
+    resetModalState();
   }
 
-  function updateField(field: keyof ProductForm, value: string) {
+  function updateField(
+    field: keyof ProductForm,
+    value: string
+  ) {
     setForm((current) => {
       const updated: ProductForm = {
         ...current,
@@ -233,23 +287,32 @@ export default function ProductsAdminPage() {
         field === 'profit_margin' ||
         field === 'vat'
       ) {
-        const purchasePrice = Number(updated.purchase_price || 0);
-        const profitMargin = Number(updated.profit_margin || 0);
+        const purchasePrice = Number(
+          updated.purchase_price || 0
+        );
+
+        const profitMargin = Number(
+          updated.profit_margin || 0
+        );
+
         const vat = Number(updated.vat || 0);
 
-        const withoutVat =
+        const priceWithoutVat =
           purchasePrice * (1 + profitMargin / 100);
 
-        const withVat = withoutVat * (1 + vat / 100);
+        const priceWithVat =
+          priceWithoutVat * (1 + vat / 100);
 
-        updated.sale_price = withVat.toFixed(2);
+        updated.sale_price = priceWithVat.toFixed(2);
       }
 
       return updated;
     });
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
     const file = event.target.files?.[0] || null;
 
     if (previewUrl.startsWith('blob:')) {
@@ -265,7 +328,9 @@ export default function ProductsAdminPage() {
     }
   }
 
-  async function uploadProductImage(file: File): Promise<string> {
+  async function uploadProductImage(
+    file: File
+  ): Promise<string> {
     const allowedTypes = [
       'image/jpeg',
       'image/png',
@@ -273,44 +338,57 @@ export default function ProductsAdminPage() {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      throw new Error('Sadece JPG, PNG veya WEBP yüklenebilir.');
+      throw new Error(
+        'Sadece JPG, PNG veya WEBP yüklenebilir.'
+      );
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      throw new Error('Görsel en fazla 5 MB olabilir.');
+      throw new Error(
+        'Görsel en fazla 5 MB olabilir.'
+      );
     }
 
     const fileData = await fileToBase64(file);
 
-    const response = await fetch('/api/products/upload-image', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileName: file.name,
-        fileType: file.type,
-        fileData,
-      }),
-    });
+    const response = await fetch(
+      '/api/products/upload-image',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          fileData,
+        }),
+      }
+    );
 
-    const result = (await response.json()) as {
+    const result = await readJsonResponse<{
       image_url?: string;
       error?: string;
-    };
+    }>(response);
 
     if (!response.ok) {
-      throw new Error(result.error || 'Görsel yüklenemedi.');
+      throw new Error(
+        result.error || 'Görsel yüklenemedi.'
+      );
     }
 
     if (!result.image_url) {
-      throw new Error('Görsel bağlantısı alınamadı.');
+      throw new Error(
+        'Görsel bağlantısı alınamadı.'
+      );
     }
 
     return result.image_url;
   }
 
-  async function saveProduct(event: FormEvent<HTMLFormElement>) {
+  async function saveProduct(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     try {
@@ -331,26 +409,34 @@ export default function ProductsAdminPage() {
       let imageUrl = form.image_url.trim();
 
       if (selectedFile) {
-        imageUrl = await uploadProductImage(selectedFile);
+        imageUrl =
+          await uploadProductImage(selectedFile);
       }
 
       const payload = {
         product_code: productCode,
         product_name: productName,
-        product_group: form.product_group.trim(),
-        purchase_price: Number(form.purchase_price) || 0,
-        profit_margin: Number(form.profit_margin) || 0,
+        product_group:
+          form.product_group.trim() || null,
+        purchase_price:
+          Number(form.purchase_price) || 0,
+        profit_margin:
+          Number(form.profit_margin) || 0,
         vat: Number(form.vat) || 20,
         sale_price: Number(form.sale_price) || 0,
         stock: Number(form.stock) || 0,
         image_url: imageUrl || null,
       };
 
+      const wasEditing = Boolean(editingProduct);
+
       const requestUrl = editingProduct
         ? `/api/products/${editingProduct.id}`
         : '/api/products';
 
-      const requestMethod = editingProduct ? 'PUT' : 'POST';
+      const requestMethod = editingProduct
+        ? 'PUT'
+        : 'POST';
 
       const response = await fetch(requestUrl, {
         method: requestMethod,
@@ -360,17 +446,17 @@ export default function ProductsAdminPage() {
         body: JSON.stringify(payload),
       });
 
-      const result = (await response.json()) as {
+      const result = await readJsonResponse<{
         error?: string;
-      };
+      }>(response);
 
       if (!response.ok) {
-        throw new Error(result.error || 'Ürün kaydedilemedi.');
+        throw new Error(
+          result.error || 'Ürün kaydedilemedi.'
+        );
       }
 
-      const wasEditing = Boolean(editingProduct);
-
-      closeModal();
+      resetModalState();
 
       setSuccess(
         wasEditing
@@ -394,7 +480,9 @@ export default function ProductsAdminPage() {
     }
   }
 
-  async function deleteProduct(product: Product) {
+  async function deleteProduct(
+    product: Product
+  ) {
     const confirmed = window.confirm(
       `${product.product_code} kodlu ürünü silmek istediğine emin misin?`
     );
@@ -414,12 +502,14 @@ export default function ProductsAdminPage() {
         }
       );
 
-      const result = (await response.json()) as {
+      const result = await readJsonResponse<{
         error?: string;
-      };
+      }>(response);
 
       if (!response.ok) {
-        throw new Error(result.error || 'Ürün silinemedi.');
+        throw new Error(
+          result.error || 'Ürün silinemedi.'
+        );
       }
 
       setSuccess('Ürün başarıyla silindi.');
@@ -440,7 +530,9 @@ export default function ProductsAdminPage() {
     }
   }
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
+  function submitSearch(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     setPage(1);
@@ -456,8 +548,13 @@ export default function ProductsAdminPage() {
 
         <div style={styles.header}>
           <div>
-            <h1 style={styles.title}>Ürün Yönetimi</h1>
-            <p style={styles.subtitle}>Toplam {total} ürün</p>
+            <h1 style={styles.title}>
+              Ürün Yönetimi
+            </h1>
+
+            <p style={styles.subtitle}>
+              Toplam {total} ürün
+            </p>
           </div>
 
           <div style={styles.headerButtons}>
@@ -485,7 +582,10 @@ export default function ProductsAdminPage() {
           </div>
         </div>
 
-        <form onSubmit={submitSearch} style={styles.searchForm}>
+        <form
+          onSubmit={submitSearch}
+          style={styles.searchForm}
+        >
           <input
             type="search"
             value={searchInput}
@@ -496,44 +596,73 @@ export default function ProductsAdminPage() {
             style={styles.searchInput}
           />
 
-          <button type="submit" style={styles.searchButton}>
+          <button
+            type="submit"
+            style={styles.searchButton}
+          >
             Ara
           </button>
         </form>
 
         {error ? (
-          <div style={styles.errorMessage}>{error}</div>
+          <div style={styles.errorMessage}>
+            {error}
+          </div>
         ) : null}
 
         {success ? (
-          <div style={styles.successMessage}>{success}</div>
+          <div style={styles.successMessage}>
+            {success}
+          </div>
         ) : null}
 
         <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.tableHeader}>Görsel</th>
-                <th style={styles.tableHeader}>Kod</th>
-                <th style={styles.tableHeader}>Parça</th>
-                <th style={styles.tableHeader}>Grup</th>
-                <th style={styles.tableHeader}>Alış</th>
-                <th style={styles.tableHeader}>Satış</th>
-                <th style={styles.tableHeader}>Stok</th>
-                <th style={styles.tableHeader}>İşlem</th>
+                <th style={styles.tableHeader}>
+                  Görsel
+                </th>
+                <th style={styles.tableHeader}>
+                  Kod
+                </th>
+                <th style={styles.tableHeader}>
+                  Parça
+                </th>
+                <th style={styles.tableHeader}>
+                  Grup
+                </th>
+                <th style={styles.tableHeader}>
+                  Alış
+                </th>
+                <th style={styles.tableHeader}>
+                  Satış
+                </th>
+                <th style={styles.tableHeader}>
+                  Stok
+                </th>
+                <th style={styles.tableHeader}>
+                  İşlem
+                </th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={styles.emptyCell}>
+                  <td
+                    colSpan={8}
+                    style={styles.emptyCell}
+                  >
                     Ürünler yükleniyor...
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={styles.emptyCell}>
+                  <td
+                    colSpan={8}
+                    style={styles.emptyCell}
+                  >
                     Ürün bulunamadı.
                   </td>
                 </tr>
@@ -555,7 +684,9 @@ export default function ProductsAdminPage() {
                     </td>
 
                     <td style={styles.tableCell}>
-                      <strong>{product.product_code}</strong>
+                      <strong>
+                        {product.product_code}
+                      </strong>
                     </td>
 
                     <td style={styles.tableCell}>
@@ -567,11 +698,17 @@ export default function ProductsAdminPage() {
                     </td>
 
                     <td style={styles.tableCell}>
-                      {money(product.purchase_price)}
+                      {formatMoney(
+                        product.purchase_price
+                      )}
                     </td>
 
                     <td style={styles.tableCell}>
-                      <strong>{money(product.sale_price)}</strong>
+                      <strong>
+                        {formatMoney(
+                          product.sale_price
+                        )}
+                      </strong>
                     </td>
 
                     <td style={styles.tableCell}>
@@ -582,7 +719,9 @@ export default function ProductsAdminPage() {
                       <div style={styles.actionButtons}>
                         <button
                           type="button"
-                          onClick={() => openEditProduct(product)}
+                          onClick={() =>
+                            openEditProduct(product)
+                          }
                           style={styles.editButton}
                         >
                           Düzenle
@@ -590,7 +729,9 @@ export default function ProductsAdminPage() {
 
                         <button
                           type="button"
-                          disabled={deletingId === product.id}
+                          disabled={
+                            deletingId === product.id
+                          }
                           onClick={() =>
                             void deleteProduct(product)
                           }
@@ -614,7 +755,9 @@ export default function ProductsAdminPage() {
             type="button"
             disabled={page <= 1 || loading}
             onClick={() =>
-              setPage((current) => Math.max(1, current - 1))
+              setPage((current) =>
+                Math.max(1, current - 1)
+              )
             }
             style={styles.pageButton}
           >
@@ -627,10 +770,15 @@ export default function ProductsAdminPage() {
 
           <button
             type="button"
-            disabled={page >= totalPages || loading}
+            disabled={
+              page >= totalPages || loading
+            }
             onClick={() =>
               setPage((current) =>
-                Math.min(totalPages, current + 1)
+                Math.min(
+                  totalPages,
+                  current + 1
+                )
               )
             }
             style={styles.pageButton}
@@ -653,6 +801,7 @@ export default function ProductsAdminPage() {
               <div style={styles.formGrid}>
                 <label style={styles.label}>
                   Ürün Kodu
+
                   <input
                     required
                     value={form.product_code}
@@ -668,6 +817,7 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   Parça Adı
+
                   <input
                     required
                     value={form.product_name}
@@ -683,6 +833,7 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   Ürün Grubu
+
                   <input
                     value={form.product_group}
                     onChange={(event) =>
@@ -697,6 +848,7 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   Alış Fiyatı
+
                   <input
                     type="number"
                     min="0"
@@ -714,6 +866,7 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   Kar Marjı %
+
                   <input
                     type="number"
                     min="0"
@@ -731,13 +884,17 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   KDV %
+
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={form.vat}
                     onChange={(event) =>
-                      updateField('vat', event.target.value)
+                      updateField(
+                        'vat',
+                        event.target.value
+                      )
                     }
                     style={styles.input}
                   />
@@ -745,6 +902,7 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   Satış Fiyatı
+
                   <input
                     type="number"
                     min="0"
@@ -762,13 +920,17 @@ export default function ProductsAdminPage() {
 
                 <label style={styles.label}>
                   Stok
+
                   <input
                     type="number"
                     min="0"
                     step="1"
                     value={form.stock}
                     onChange={(event) =>
-                      updateField('stock', event.target.value)
+                      updateField(
+                        'stock',
+                        event.target.value
+                      )
                     }
                     style={styles.input}
                   />
@@ -778,6 +940,7 @@ export default function ProductsAdminPage() {
               <div style={styles.imageArea}>
                 <label style={styles.label}>
                   Ürün Görseli
+
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -800,7 +963,9 @@ export default function ProductsAdminPage() {
                   disabled={saving}
                   style={styles.saveButton}
                 >
-                  {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                  {saving
+                    ? 'Kaydediliyor...'
+                    : 'Kaydet'}
                 </button>
 
                 <button
@@ -1049,7 +1214,8 @@ const styles: Record<string, CSSProperties> = {
     padding: '26px',
     borderRadius: '16px',
     background: '#ffffff',
-    boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
+    boxShadow:
+      '0 24px 80px rgba(0,0,0,0.28)',
   },
 
   modalTitle: {
