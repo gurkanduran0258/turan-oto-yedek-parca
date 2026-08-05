@@ -3,52 +3,73 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
 
+type UploadBody = {
+  fileName?: string;
+  fileType?: string;
+  fileData?: string;
+};
+
 export async function POST(request: Request) {
   try {
-    const contentType = request.headers.get('content-type') || '';
+    const body = (await request.json()) as UploadBody;
 
-    if (!contentType.includes('multipart/form-data')) {
+    const fileName = body.fileName?.trim();
+    const fileType = body.fileType?.trim();
+    const fileData = body.fileData?.trim();
+
+    if (!fileName || !fileType || !fileData) {
       return NextResponse.json(
-        { error: 'Görsel yükleme isteği form-data olarak gönderilmedi.' },
-        { status: 400 }
-      );
-    }
-
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!(file instanceof File)) {
-      return NextResponse.json(
-        { error: 'Görsel dosyası bulunamadı.' },
+        { error: 'Görsel bilgileri eksik gönderildi.' },
         { status: 400 }
       );
     }
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(fileType)) {
       return NextResponse.json(
         { error: 'Sadece JPG, PNG veya WEBP yüklenebilir.' },
         { status: 400 }
       );
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    const base64Data = fileData.includes(',')
+      ? fileData.split(',')[1]
+      : fileData;
+
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    if (!buffer.length) {
+      return NextResponse.json(
+        { error: 'Görsel dosyası okunamadı.' },
+        { status: 400 }
+      );
+    }
+
+    if (buffer.length > 5 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'Görsel en fazla 5 MB olabilir.' },
         { status: 400 }
       );
     }
 
+    const extension =
+      fileName.split('.').pop()?.toLowerCase() ||
+      (fileType === 'image/png'
+        ? 'png'
+        : fileType === 'image/webp'
+          ? 'webp'
+          : 'jpg');
+
+    const storagePath =
+      `products/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
     const supabase = getSupabaseAdmin();
-    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `products/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await supabase.storage
       .from('product-images')
-      .upload(fileName, buffer, {
-        contentType: file.type,
+      .upload(storagePath, buffer, {
+        contentType: fileType,
         upsert: false,
       });
 
@@ -61,15 +82,20 @@ export async function POST(request: Request) {
 
     const { data } = supabase.storage
       .from('product-images')
-      .getPublicUrl(fileName);
+      .getPublicUrl(storagePath);
 
     return NextResponse.json({
       image_url: data.publicUrl,
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : 'Görsel yüklenemedi.';
+      error instanceof Error
+        ? error.message
+        : 'Görsel yüklenemedi.';
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
   }
 }
