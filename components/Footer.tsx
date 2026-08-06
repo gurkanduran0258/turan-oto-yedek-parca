@@ -8,7 +8,7 @@ export default function Footer() {
         <div><h4>BİLGİ</h4><a>KVKK</a><a>Gizlilik</a><a>Mesafeli Satış</a></div>
         <div><h4>ÖDEME</h4><p>Kredi Kartı</p><p>Havale / EFT</p><p>B2B Cari Hesap</p></div>
       </div>
-      <div className="container copyright">© 2026 Turan Oto Yedek Parça</div>
+      <div className="container copyright">© 2026 Turan Oto Yedek Parça MİHRAS Bilişim</div>
     </footer>
   );
 }
