@@ -22,7 +22,7 @@ export default function Header() {
             <button aria-label="Ara"><Search size={22} /></button>
           </form>
           <nav className="headerActions">
-            <a href="tel:08503026666"><Phone size={18} /> 0850 302 66 66</a>
+            <a href="tel:08503026666"><Phone size={18} /> 0212 227 12 17</a>
             <Link href="/giris"><User size={18} /> Giriş</Link>
             <Link href="/sepet"><ShoppingCart size={18} /> Sepet <b>{count}</b></Link>
           </nav>
