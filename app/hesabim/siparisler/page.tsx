@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import AccountNav from "@/components/AccountNav";
 import { supabase } from "@/lib/supabase-client";
@@ -15,58 +15,25 @@ type Order = {
   shipping: number;
   total: number;
   payment_method: string | null;
-
-  address_snapshot: {
-    title?: string;
-    first_name?: string;
-    last_name?: string;
-    phone?: string;
-    city?: string;
-    district?: string;
-    neighborhood?: string | null;
-    address_line?: string;
-    postal_code?: string | null;
-  } | null;
-
   created_at: string;
 };
 
-type OrderItem = {
-  id: number;
-  product_id: number | null;
-  product_code: string | null;
-  product_name: string;
-  image_url: string | null;
-  unit_price: number;
-  quantity: number;
-  line_total: number;
-};
-
-function money(value: number) {
+function formatMoney(value: number) {
   return Number(value || 0).toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
-export default function OrderDetailPage() {
-  const params = useParams<{ id: string }>();
+export default function OrdersPage() {
   const router = useRouter();
 
-  const [order, setOrder] =
-    useState<Order | null>(null);
-
-  const [items, setItems] =
-    useState<OrderItem[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadOrder() {
+    async function loadOrders() {
       try {
         setLoading(true);
         setError("");
@@ -80,117 +47,41 @@ export default function OrderDetailPage() {
           return;
         }
 
-        const rawId =
-          decodeURIComponent(
-            String(params.id || "")
-          ).trim();
-
-        if (!rawId) {
-          setError(
-            "Sipariş bilgisi bulunamadı."
-          );
-          setLoading(false);
-          return;
-        }
-
-        /*
-         * URL sayısal ise ID ile,
-         * TO-... ise sipariş numarası ile ara.
-         */
-        const numericId =
-          Number(rawId);
-
-        let query = supabase
+        const { data, error } = await supabase
           .from("orders")
-          .select("*")
-          .eq("user_id", user.id);
+          .select(`
+            id,
+            order_no,
+            status,
+            subtotal,
+            shipping,
+            total,
+            payment_method,
+            created_at
+          `)
+          .eq("user_id", user.id)
+          .order("created_at", {
+            ascending: false,
+          });
 
-        if (
-          Number.isInteger(numericId) &&
-          numericId > 0
-        ) {
-          query = query.eq(
-            "id",
-            numericId
-          );
-        } else {
-          const cleanOrderNo =
-            rawId.startsWith("#")
-              ? rawId.slice(1)
-              : rawId;
-
-          query = query.eq(
-            "order_no",
-            cleanOrderNo
-          );
+        if (error) {
+          throw error;
         }
 
-        const {
-          data: orderData,
-          error: orderError,
-        } = await query.maybeSingle();
-
-        if (orderError) {
-          throw orderError;
-        }
-
-        if (!orderData) {
-          setError(
-            "Sipariş bulunamadı."
-          );
-          setLoading(false);
-          return;
-        }
-
-        setOrder(
-          orderData as Order
-        );
-
-        const {
-          data: itemData,
-          error: itemError,
-        } = await supabase
-          .from("order_items")
-          .select("*")
-          .eq(
-            "order_id",
-            orderData.id
-          )
-          .order("id");
-
-        if (itemError) {
-          throw itemError;
-        }
-
-        setItems(
-          (itemData || []) as OrderItem[]
-        );
+        setOrders((data || []) as Order[]);
       } catch (requestError) {
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "Sipariş yüklenemedi."
+            : "Siparişler yüklenemedi."
         );
       } finally {
         setLoading(false);
       }
     }
 
-    void loadOrder();
-  }, [params.id, router]);
-
-  if (loading) {
-    return (
-      <main
-        className="container"
-        style={{
-          padding: "50px 0",
-        }}
-      >
-        Sipariş yükleniyor...
-      </main>
-    );
-  }
+    void loadOrders();
+  }, [router]);
 
   return (
     <main
@@ -202,8 +93,7 @@ export default function OrderDetailPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns:
-            "240px minmax(0,1fr)",
+          gridTemplateColumns: "240px minmax(0,1fr)",
           gap: "24px",
           alignItems: "start",
         }}
@@ -212,27 +102,34 @@ export default function OrderDetailPage() {
 
         <section
           style={{
-            border:
-              "1px solid #e2e8f0",
+            border: "1px solid #e2e8f0",
             borderRadius: "12px",
             padding: "28px",
             background: "#ffffff",
           }}
         >
-          <Link
-            href="/hesabim/siparisler"
+          <h1
             style={{
-              color: "#64748b",
-              textDecoration: "none",
+              marginTop: 0,
+              marginBottom: "8px",
             }}
           >
-            ← Siparişlerime dön
-          </Link>
+            Siparişlerim
+          </h1>
+
+          <p
+            style={{
+              color: "#64748b",
+              marginTop: 0,
+            }}
+          >
+            Geçmiş ve devam eden siparişlerinizi görüntüleyin.
+          </p>
 
           {error ? (
             <div
               style={{
-                marginTop: "20px",
+                marginTop: "18px",
                 padding: "14px",
                 background: "#fee2e2",
                 color: "#991b1b",
@@ -242,298 +139,156 @@ export default function OrderDetailPage() {
             >
               {error}
             </div>
-          ) : order ? (
-            <>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent:
-                    "space-between",
-                  gap: "15px",
-                  flexWrap: "wrap",
-                  marginTop: "22px",
-                }}
-              >
-                <div>
-                  <h1
-                    style={{
-                      margin:
-                        "0 0 7px",
-                    }}
-                  >
-                    Sipariş #
-                    {order.order_no}
-                  </h1>
+          ) : null}
+
+          {loading ? (
+            <div
+              style={{
+                padding: "35px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              Siparişler yükleniyor...
+            </div>
+          ) : null}
+
+          {!loading && !error && orders.length > 0 ? (
+            <div
+              style={{
+                display: "grid",
+                gap: "12px",
+                marginTop: "22px",
+              }}
+            >
+              {orders.map((order) => (
+                <div
+                  key={order.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(220px,1.5fr) minmax(120px,.8fr) minmax(140px,.8fr) auto",
+                    alignItems: "center",
+                    gap: "18px",
+                    padding: "16px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "10px",
+                    background: "#ffffff",
+                  }}
+                >
+                  <div>
+                    <strong
+                      style={{
+                        display: "block",
+                        fontSize: "15px",
+                      }}
+                    >
+                      #{order.order_no}
+                    </strong>
+
+                    <small
+                      style={{
+                        display: "block",
+                        marginTop: "5px",
+                        color: "#64748b",
+                      }}
+                    >
+                      {new Date(order.created_at).toLocaleDateString("tr-TR")}
+                    </small>
+
+                    {order.payment_method ? (
+                      <small
+                        style={{
+                          display: "block",
+                          marginTop: "4px",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        {order.payment_method}
+                      </small>
+                    ) : null}
+                  </div>
 
                   <span
                     style={{
+                      width: "fit-content",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background:
+                        order.status === "Ödendi"
+                          ? "#fef3c7"
+                          : order.status === "Tamamlandı"
+                            ? "#dcfce7"
+                            : "#f1f5f9",
                       color:
-                        "#64748b",
+                        order.status === "Ödendi"
+                          ? "#92400e"
+                          : order.status === "Tamamlandı"
+                            ? "#166534"
+                            : "#334155",
+                      fontWeight: 800,
+                      fontSize: "12px",
                     }}
                   >
-                    {new Date(
-                      order.created_at
-                    ).toLocaleString(
-                      "tr-TR"
-                    )}
-                  </span>
-                </div>
-
-                <span
-                  style={{
-                    padding:
-                      "8px 13px",
-                    borderRadius:
-                      "999px",
-                    background:
-                      "#fef3c7",
-                    color:
-                      "#92400e",
-                    fontWeight: 800,
-                    height:
-                      "fit-content",
-                  }}
-                >
-                  {order.status}
-                </span>
-              </div>
-
-              <div
-                style={{
-                  marginTop: "28px",
-                  display: "grid",
-                  gap: "12px",
-                }}
-              >
-                {items.map(
-                  (item) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        display:
-                          "grid",
-                        gridTemplateColumns:
-                          "85px minmax(0,1fr) auto auto",
-                        gap: "16px",
-                        alignItems:
-                          "center",
-                        padding:
-                          "13px",
-                        border:
-                          "1px solid #e2e8f0",
-                        borderRadius:
-                          "9px",
-                      }}
-                    >
-                      <img
-                        src={
-                          item.image_url ||
-                          "/opar-filtre-banner.png"
-                        }
-                        alt={
-                          item.product_name
-                        }
-                        style={{
-                          width:
-                            "78px",
-                          height:
-                            "78px",
-                          objectFit:
-                            "contain",
-                        }}
-                      />
-
-                      <div>
-                        <strong>
-                          {
-                            item.product_name
-                          }
-                        </strong>
-
-                        <div
-                          style={{
-                            marginTop:
-                              "5px",
-                            color:
-                              "#64748b",
-                          }}
-                        >
-                          OEM:{" "}
-                          {item.product_code ||
-                            "-"}
-                        </div>
-                      </div>
-
-                      <span>
-                        {
-                          item.quantity
-                        }{" "}
-                        adet
-                      </span>
-
-                      <strong>
-                        {money(
-                          item.line_total
-                        )}{" "}
-                        TL
-                      </strong>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div
-                style={{
-                  maxWidth:
-                    "380px",
-                  marginLeft:
-                    "auto",
-                  marginTop:
-                    "25px",
-                  padding:
-                    "18px",
-                  border:
-                    "1px solid #e2e8f0",
-                  borderRadius:
-                    "10px",
-                }}
-              >
-                <p style={summaryRow}>
-                  <span>
-                    Ara Toplam
+                    {order.status}
                   </span>
 
-                  <b>
-                    {money(
-                      order.subtotal
-                    )}{" "}
-                    TL
-                  </b>
-                </p>
-
-                <p style={summaryRow}>
-                  <span>
-                    Kargo
-                  </span>
-
-                  <b>
-                    {Number(
-                      order.shipping
-                    ) === 0
-                      ? "Ücretsiz"
-                      : `${money(
-                          order.shipping
-                        )} TL`}
-                  </b>
-                </p>
-
-                <p
-                  style={{
-                    ...summaryRow,
-                    borderTop:
-                      "1px solid #e2e8f0",
-                    paddingTop:
-                      "13px",
-                    fontSize:
-                      "19px",
-                  }}
-                >
-                  <span>
-                    Toplam
-                  </span>
-
-                  <b>
-                    {money(
-                      order.total
-                    )}{" "}
-                    TL
-                  </b>
-                </p>
-              </div>
-
-              {order.address_snapshot ? (
-                <div
-                  style={{
-                    marginTop:
-                      "25px",
-                    padding:
-                      "18px",
-                    background:
-                      "#f8fafc",
-                    borderRadius:
-                      "10px",
-                  }}
-                >
-                  <strong>
-                    Teslimat Adresi
+                  <strong
+                    style={{
+                      fontSize: "16px",
+                    }}
+                  >
+                    {formatMoney(order.total)} TL
                   </strong>
 
-                  <p
+                  <Link
+                    href={`/hesabim/siparisler/${order.id}`}
                     style={{
-                      color:
-                        "#475569",
-                      lineHeight:
-                        1.7,
-                      marginBottom:
-                        0,
+                      color: "#c90020",
+                      fontWeight: 800,
+                      textDecoration: "none",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {
-                      order
-                        .address_snapshot
-                        .first_name
-                    }{" "}
-                    {
-                      order
-                        .address_snapshot
-                        .last_name
-                    }
-                    <br />
-
-                    {order
-                      .address_snapshot
-                      .neighborhood
-                      ? `${order.address_snapshot.neighborhood}, `
-                      : ""}
-
-                    {
-                      order
-                        .address_snapshot
-                        .address_line
-                    }
-                    <br />
-
-                    {
-                      order
-                        .address_snapshot
-                        .district
-                    }{" "}
-                    /{" "}
-                    {
-                      order
-                        .address_snapshot
-                        .city
-                    }
-                    <br />
-
-                    {
-                      order
-                        .address_snapshot
-                        .phone
-                    }
-                  </p>
+                    Detay ›
+                  </Link>
                 </div>
-              ) : null}
-            </>
+              ))}
+            </div>
+          ) : null}
+
+          {!loading && !error && orders.length === 0 ? (
+            <div
+              style={{
+                padding: "35px",
+                textAlign: "center",
+                background: "#f8fafc",
+                borderRadius: "10px",
+                marginTop: "20px",
+              }}
+            >
+              <strong>
+                Henüz siparişiniz bulunmuyor.
+              </strong>
+
+              <p
+                style={{
+                  color: "#64748b",
+                }}
+              >
+                İlk siparişinizi verdiğinizde burada görünecek.
+              </p>
+
+              <Link
+                href="/urunler"
+                className="primary"
+              >
+                ALIŞVERİŞE BAŞLA
+              </Link>
+            </div>
           ) : null}
         </section>
       </div>
     </main>
   );
 }
-
-const summaryRow: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "15px",
-};
