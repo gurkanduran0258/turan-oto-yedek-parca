@@ -1,31 +1,38 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-let adminClient: SupabaseClient | null = null;
-
-export function getSupabaseAdmin(): SupabaseClient {
-  if (adminClient) {
-    return adminClient;
-  }
-
+export function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL tanımlanmamış.');
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL environment variable eksik."
+    );
+  }
+
+  if (
+    !supabaseUrl.startsWith("http://") &&
+    !supabaseUrl.startsWith("https://")
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL geçerli bir http/https adresi değil."
+    );
   }
 
   if (!serviceRoleKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY tanımlanmamış.');
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY environment variable eksik."
+    );
   }
 
-  adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  return adminClient;
+  return createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 }
-
-export const supabaseAdmin = getSupabaseAdmin();
