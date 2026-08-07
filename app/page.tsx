@@ -1,66 +1,289 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/lib/products";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-const cats = [
-  ["⚙️", "Motor"],
-  ["◉", "Fren Sistemi"],
-  ["💡", "Elektrik"],
-  ["🚘", "Kaporta"],
-  ["〽", "Süspansiyon"],
-  ["▥", "Filtreler"],
-  ["🧴", "Yağ"],
-  ["⚙", "Şanzıman"],
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type DatabaseProduct = {
+  id: number;
+  product_code: string;
+  product_name: string;
+  product_group: string | null;
+  sale_price: number | string | null;
+  stock: number | null;
+  image_url: string | null;
+};
+
+type Product = {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  price: number;
+  oldPrice: number;
+  oem: string;
+  stock: number;
+  vehicle: string;
+  image: string;
+  badge: string;
+};
+
+const categories = [
+  ["⚙️", "Motor", "Motor"],
+  ["◉", "Fren Sistemi", "Fren"],
+  ["💡", "Elektrik", "Elektrik"],
+  ["🚘", "Kaporta", "Kaporta"],
+  ["〽", "Süspansiyon", "Süspansiyon"],
+  ["▥", "Filtreler", "Filtre"],
+  ["🧴", "Yağ", "Yağ"],
+  ["⚙", "Şanzıman", "Şanzıman"],
 ];
 
-export default function Home() {
+function normalizeCategory(
+  value: string | null
+) {
+  const text = (
+    value || ""
+  )
+    .trim()
+    .toLocaleLowerCase("tr-TR");
+
+  if (text.includes("filtre")) {
+    return "Filtre";
+  }
+
+  if (text.includes("fren")) {
+    return "Fren";
+  }
+
+  if (text.includes("motor")) {
+    return "Motor";
+  }
+
+  if (text.includes("elektrik")) {
+    return "Elektrik";
+  }
+
+  if (text.includes("kaporta")) {
+    return "Kaporta";
+  }
+
+  if (
+    text.includes("süspansiyon") ||
+    text.includes("suspansiyon")
+  ) {
+    return "Süspansiyon";
+  }
+
+  if (
+    text === "yağ" ||
+    text === "yag"
+  ) {
+    return "Yağ";
+  }
+
+  if (
+    text.includes("şanzıman") ||
+    text.includes("sanziman")
+  ) {
+    return "Şanzıman";
+  }
+
+  return value || "Diğer";
+}
+
+function mapProduct(
+  product: DatabaseProduct
+): Product {
+  const price = Number(
+    product.sale_price || 0
+  );
+
+  const stock = Number(
+    product.stock || 0
+  );
+
+  return {
+    id: Number(product.id),
+
+    name:
+      product.product_name ||
+      "Ürün",
+
+    brand: "OPAR",
+
+    category:
+      normalizeCategory(
+        product.product_group
+      ),
+
+    price,
+
+    oldPrice:
+      price > 0
+        ? Number(
+            (
+              price * 1.1
+            ).toFixed(2)
+          )
+        : 0,
+
+    oem:
+      product.product_code ||
+      "",
+
+    stock,
+
+    vehicle: "",
+
+    image:
+      product.image_url ||
+      "/opar-filtre-banner.png",
+
+    badge:
+      stock > 0
+        ? "Stokta"
+        : "Tükendi",
+  };
+}
+
+async function getProducts() {
+  const supabase =
+    getSupabaseAdmin();
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("products")
+    .select(`
+      id,
+      product_code,
+      product_name,
+      product_group,
+      sale_price,
+      stock,
+      image_url
+    `)
+    .order("id", {
+      ascending: false,
+    })
+    .limit(8);
+
+  if (error) {
+    console.error(
+      "Ana sayfa ürün hatası:",
+      error.message
+    );
+
+    return [];
+  }
+
+  return (
+    (data || []) as DatabaseProduct[]
+  ).map(mapProduct);
+}
+
+export default async function Home() {
+  const products =
+    await getProducts();
+
   return (
     <main className="container">
+
+      {/* HERO */}
       <section className="heroGrid">
 
-        {/* SOL - ARAÇ SEÇ */}
+        {/* SOL */}
         <aside className="vehicleBox">
-          <h2>ARACINI SEÇ</h2>
+          <h2>
+            ARACINI SEÇ
+          </h2>
 
           <p>
-            Aracına uygun parçaları görüntüle
+            Aracına uygun parçaları
+            görüntüle
           </p>
 
-          <select defaultValue="Fiat">
-            <option>Fiat</option>
+          <select
+            defaultValue="Fiat"
+          >
+            <option value="Fiat">
+              Fiat
+            </option>
           </select>
 
-          <select defaultValue="">
+          <select
+            defaultValue=""
+          >
             <option value="">
               Model Seçin
             </option>
 
-            <option>Egea</option>
-            <option>Doblo</option>
-            <option>Fiorino</option>
-            <option>Linea</option>
+            <option value="Egea">
+              Egea
+            </option>
+
+            <option value="Doblo">
+              Doblo
+            </option>
+
+            <option value="Fiorino">
+              Fiorino
+            </option>
+
+            <option value="Linea">
+              Linea
+            </option>
           </select>
 
-          <select defaultValue="">
+          <select
+            defaultValue=""
+          >
             <option value="">
               Yıl Seçin
             </option>
 
-            <option>2026</option>
-            <option>2025</option>
-            <option>2024</option>
-            <option>2023</option>
-            <option>2022</option>
+            <option>
+              2026
+            </option>
+
+            <option>
+              2025
+            </option>
+
+            <option>
+              2024
+            </option>
+
+            <option>
+              2023
+            </option>
+
+            <option>
+              2022
+            </option>
           </select>
 
-          <select defaultValue="">
+          <select
+            defaultValue=""
+          >
             <option value="">
               Motor Seçin
             </option>
 
-            <option>1.3 Multijet</option>
-            <option>1.4 Fire</option>
-            <option>1.6 Multijet</option>
+            <option>
+              1.3 Multijet
+            </option>
+
+            <option>
+              1.4 Fire
+            </option>
+
+            <option>
+              1.6 Multijet
+            </option>
           </select>
 
           <Link
@@ -74,21 +297,21 @@ export default function Home() {
             href="/sasi-sorgula"
             style={{
               display: "block",
-              marginTop: "10px",
+              marginTop: "12px",
               textAlign: "center",
               color: "#ffffff",
-              fontWeight: 700,
               textDecoration: "none",
+              fontWeight: 800,
             }}
           >
             🔎 ŞASE İLE ARA
           </Link>
         </aside>
 
-        {/* ORTA - KAMPANYA */}
+        {/* ORTA KAMPANYA */}
         <div className="heroImage heroCampaign">
-          <div className="heroCopy">
 
+          <div className="heroCopy">
             <span>
               TURAN OTO GÜVENCESİYLE
             </span>
@@ -119,12 +342,13 @@ export default function Home() {
           <div className="heroVisual">
             <img
               src="/opar-filtre-banner.png"
-              alt="Opar filtre bakım seti"
+              alt="Opar Fiat Yedek Parça"
             />
           </div>
+
         </div>
 
-        {/* SAĞ - GÜVEN */}
+        {/* SAĞ */}
         <aside className="trustBox">
 
           <div>
@@ -176,31 +400,30 @@ export default function Home() {
           </div>
 
         </aside>
+
       </section>
 
-      {/* KATEGORİ ŞERİDİ */}
+      {/* KATEGORİLER */}
       <section className="categoryStrip">
 
-        {cats.map(
-          ([icon, name]) => (
+        {categories.map(
+          ([
+            icon,
+            title,
+            category,
+          ]) => (
             <Link
+              key={title}
               href={`/urunler?category=${encodeURIComponent(
-                name ===
-                  "Fren Sistemi"
-                  ? "Fren"
-                  : name ===
-                      "Filtreler"
-                    ? "Filtre"
-                    : name
+                category
               )}`}
-              key={name}
             >
               <span>
                 {icon}
               </span>
 
               <b>
-                {name}
+                {title}
               </b>
             </Link>
           )
@@ -208,7 +431,7 @@ export default function Home() {
 
       </section>
 
-      {/* ÖNE ÇIKANLAR */}
+      {/* ÖNE ÇIKAN */}
       <div className="sectionHead">
 
         <h2>
@@ -223,27 +446,26 @@ export default function Home() {
 
       <section className="productsLayout">
 
+        {/* SOL KATEGORİLER */}
         <aside className="sideCats">
 
           <h3>
             KATEGORİLER
           </h3>
 
-          {cats.map(
-            ([, name]) => (
+          {categories.map(
+            ([
+              ,
+              title,
+              category,
+            ]) => (
               <Link
+                key={title}
                 href={`/urunler?category=${encodeURIComponent(
-                  name ===
-                    "Fren Sistemi"
-                    ? "Fren"
-                    : name ===
-                        "Filtreler"
-                      ? "Filtre"
-                      : name
+                  category
                 )}`}
-                key={name}
               >
-                {name}
+                {title}
 
                 <span>
                   ›
@@ -254,21 +476,39 @@ export default function Home() {
 
         </aside>
 
+        {/* GERÇEK SUPABASE ÜRÜNLERİ */}
         <div className="productGrid">
 
-          {products.map(
-            (product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-              />
+          {products.length > 0 ? (
+            products.map(
+              (product) => (
+                <ProductCard
+                  key={
+                    product.id
+                  }
+                  product={
+                    product
+                  }
+                />
+              )
             )
+          ) : (
+            <div
+              style={{
+                padding: "30px",
+                background: "#f8fafc",
+                borderRadius: "10px",
+              }}
+            >
+              Henüz ürün bulunamadı.
+            </div>
           )}
 
         </div>
+
       </section>
 
-      {/* İSTATİSTİK */}
+      {/* ALT İSTATİSTİK */}
       <section className="stats">
 
         <div>
@@ -312,6 +552,7 @@ export default function Home() {
         </div>
 
       </section>
+
     </main>
   );
 }
