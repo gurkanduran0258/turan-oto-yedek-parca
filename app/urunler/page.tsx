@@ -25,68 +25,138 @@ type ProductsResponse = {
   error?: string;
 };
 
-function normalizeCategory(value: string | null): string {
-  const text = (value || "Diğer").trim().toLocaleUpperCase("tr-TR");
+const CATEGORIES = [
+  "Tümü",
+  "Motor",
+  "Fren",
+  "Elektrik",
+  "Kaporta",
+  "Süspansiyon",
+  "Filtre",
+  "Yağ",
+  "Şanzıman",
+];
 
-  if (text.includes("FİLTRE") || text.includes("FILTRE")) {
+function normalizeText(value: string | null | undefined) {
+  return (value || "")
+    .toLocaleUpperCase("tr-TR")
+    .replace(/İ/g, "I")
+    .replace(/Ş/g, "S")
+    .replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U")
+    .replace(/Ö/g, "O")
+    .replace(/Ç/g, "C");
+}
+
+function detectCategory(product: DatabaseProduct): string {
+  const text = normalizeText(
+    `${product.product_group || ""} ${product.product_name || ""}`
+  );
+
+  // FİLTRE
+  if (
+    text.includes("FILTRE") ||
+    text.includes("POLEN") ||
+    text.includes("HAVA FILT") ||
+    text.includes("YAKIT FILT")
+  ) {
     return "Filtre";
   }
 
+  // YAĞ
+  if (
+    text.includes("YAG ") ||
+    text.includes("YAGI") ||
+    text.includes("YAG POMP") ||
+    text.includes("MOTOR YAG")
+  ) {
+    return "Yağ";
+  }
+
+  // FREN
   if (
     text.includes("FREN") ||
     text.includes("BALATA") ||
-    text.includes("DİSK") ||
-    text.includes("DISK")
+    text.includes("DISK") ||
+    text.includes("KALIPER")
   ) {
     return "Fren";
   }
 
+  // ELEKTRİK
   if (
-    text.includes("ELEKTRİK") ||
     text.includes("ELEKTRIK") ||
-    text.includes("BOBİN") ||
     text.includes("BOBIN") ||
-    text.includes("BUJİ") ||
-    text.includes("BUJI")
+    text.includes("BUJI") ||
+    text.includes("ALTERNATOR") ||
+    text.includes("MARŞ") ||
+    text.includes("MARS") ||
+    text.includes("FAR") ||
+    text.includes("SENSOR")
   ) {
     return "Elektrik";
   }
 
-  if (
-    text.includes("SÜSPANSİYON") ||
-    text.includes("SUSPANSIYON") ||
-    text.includes("AMORTİSÖR") ||
-    text.includes("AMORTISOR") ||
-    text.includes("ROT") ||
-    text.includes("TAKOZ")
-  ) {
-    return "Süspansiyon";
-  }
-
+  // KAPORTA
   if (
     text.includes("KAPORTA") ||
     text.includes("TAMPON") ||
-    text.includes("ÇAMURLUK") ||
     text.includes("CAMURLUK") ||
     text.includes("KAPUT") ||
-    text.includes("KAPI")
+    text.includes("KAPI") ||
+    text.includes("PANEL") ||
+    text.includes("PANJUR") ||
+    text.includes("CITA") ||
+    text.includes("BRAKET")
   ) {
     return "Kaporta";
   }
 
+  // SÜSPANSİYON
+  if (
+    text.includes("SUSPANSIYON") ||
+    text.includes("AMORTISOR") ||
+    text.includes("ROT BASI") ||
+    text.includes("ROTIL") ||
+    text.includes("Z ROT") ||
+    text.includes("SALINCAK") ||
+    text.includes("TRAVERS")
+  ) {
+    return "Süspansiyon";
+  }
+
+  // ŞANZIMAN
+  if (
+    text.includes("SANZIMAN") ||
+    text.includes("SANZUMAN") ||
+    text.includes("VITES") ||
+    text.includes("DEBRIYAJ") ||
+    text.includes("DIFERANSIYEL") ||
+    text.includes("DISLI") ||
+    text.includes("DCT")
+  ) {
+    return "Şanzıman";
+  }
+
+  // MOTOR
   if (
     text.includes("MOTOR") ||
-    text.includes("EKSANTRİK") ||
     text.includes("EKSANTRIK") ||
-    text.includes("ENJEKTÖR") ||
+    text.includes("TRIGER") ||
+    text.includes("ZINCIR") ||
     text.includes("ENJEKTOR") ||
-    text.includes("MANİFOLD") ||
-    text.includes("MANIFOLD")
+    text.includes("MANIFOLD") ||
+    text.includes("SILINDIR") ||
+    text.includes("SUBAP") ||
+    text.includes("KULBUTOR") ||
+    text.includes("CONTA")
   ) {
     return "Motor";
   }
 
-  return value?.trim() || "Diğer";
+  // Tanımlanamayanı şimdilik Motor'a atma.
+  // Filtrede "Tümü" altında görünmeye devam eder.
+  return "Diğer";
 }
 
 function toCardProduct(product: DatabaseProduct): CartProduct {
@@ -97,7 +167,7 @@ function toCardProduct(product: DatabaseProduct): CartProduct {
     id: product.id,
     name: product.product_name || "İsimsiz Ürün",
     brand: "OPAR",
-    category: normalizeCategory(product.product_group),
+    category: detectCategory(product),
     price,
     oldPrice: price > 0 ? Math.round(price * 1.1) : 0,
     oem: product.product_code || "-",
@@ -130,29 +200,19 @@ export default function ProductsPage() {
           }
         );
 
-        const responseText = await response.text();
+        const text = await response.text();
 
-        if (!responseText.trim()) {
-          throw new Error(
-            `Ürün servisi boş cevap verdi. HTTP: ${response.status}`
-          );
+        if (!text.trim()) {
+          throw new Error("Ürün servisi boş cevap verdi.");
         }
 
-        let result: ProductsResponse;
-
-        try {
-          result = JSON.parse(responseText) as ProductsResponse;
-        } catch {
-          throw new Error("Ürün servisinden geçersiz cevap geldi.");
-        }
+        const result = JSON.parse(text) as ProductsResponse;
 
         if (!response.ok) {
           throw new Error(result.error || "Ürünler getirilemedi.");
         }
 
-        const mappedProducts = (result.products || []).map(toCardProduct);
-
-        setProducts(mappedProducts);
+        setProducts((result.products || []).map(toCardProduct));
       } catch (requestError) {
         setProducts([]);
 
@@ -169,39 +229,56 @@ export default function ProductsPage() {
     void loadProducts();
   }, []);
 
-  const categories = useMemo(() => {
-    const dynamicCategories = Array.from(
-      new Set(products.map((product) => product.category))
-    ).sort((a, b) => a.localeCompare(b, "tr"));
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
 
-    return ["Tümü", ...dynamicCategories];
+    for (const item of CATEGORIES) {
+      counts[item] = 0;
+    }
+
+    counts["Tümü"] = products.length;
+
+    for (const product of products) {
+      if (counts[product.category] !== undefined) {
+        counts[product.category] += 1;
+      }
+    }
+
+    return counts;
   }, [products]);
 
   const list = useMemo(() => {
+    const search = query
+      .trim()
+      .toLocaleLowerCase("tr-TR");
+
     let output = products.filter((product) => {
-      const matchesCategory =
-        category === "Tümü" || product.category === category;
+      const categoryMatch =
+        category === "Tümü" ||
+        product.category === category;
 
-      const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
-
-      const matchesQuery =
-        !normalizedQuery ||
+      const searchMatch =
+        !search ||
         product.name
           .toLocaleLowerCase("tr-TR")
-          .includes(normalizedQuery) ||
+          .includes(search) ||
         product.oem
           .toLocaleLowerCase("tr-TR")
-          .includes(normalizedQuery);
+          .includes(search);
 
-      return matchesCategory && matchesQuery;
+      return categoryMatch && searchMatch;
     });
 
     if (sort === "asc") {
-      output = [...output].sort((a, b) => a.price - b.price);
+      output = [...output].sort(
+        (a, b) => a.price - b.price
+      );
     }
 
     if (sort === "desc") {
-      output = [...output].sort((a, b) => b.price - a.price);
+      output = [...output].sort(
+        (a, b) => b.price - a.price
+      );
     }
 
     return output;
@@ -218,17 +295,27 @@ export default function ProductsPage() {
 
       <main className="container listingLayout">
         <aside className="filterPanel">
-          <h3>Kategori</h3>
+          <h3>Kategoriler</h3>
 
-          {categories.map((item) => (
+          {CATEGORIES.map((item) => (
             <label key={item}>
               <input
                 type="radio"
                 name="category"
                 checked={category === item}
                 onChange={() => setCategory(item)}
-              />{" "}
-              {item}
+              />
+
+              <span>{item}</span>
+
+              <small
+                style={{
+                  marginLeft: "auto",
+                  color: "#64748b",
+                }}
+              >
+                {categoryCounts[item] || 0}
+              </small>
             </label>
           ))}
         </aside>
@@ -237,28 +324,50 @@ export default function ProductsPage() {
           <div className="toolbar">
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ürün veya OEM ara..."
+              onChange={(event) =>
+                setQuery(event.target.value)
+              }
+              placeholder="Ürün adı veya OEM kodu ara..."
             />
 
             <select
               value={sort}
-              onChange={(event) => setSort(event.target.value)}
+              onChange={(event) =>
+                setSort(event.target.value)
+              }
             >
-              <option value="featured">Önerilen</option>
-              <option value="asc">Fiyat artan</option>
-              <option value="desc">Fiyat azalan</option>
+              <option value="featured">
+                Önerilen
+              </option>
+
+              <option value="asc">
+                Fiyat: Artan
+              </option>
+
+              <option value="desc">
+                Fiyat: Azalan
+              </option>
             </select>
+          </div>
+
+          <div
+            style={{
+              margin: "12px 0 18px",
+              color: "#64748b",
+              fontSize: "14px",
+            }}
+          >
+            <strong>{list.length}</strong> ürün bulundu
           </div>
 
           {error ? (
             <div
               style={{
-                marginBottom: "16px",
                 padding: "12px 14px",
-                borderRadius: "8px",
+                marginBottom: "15px",
                 background: "#fee2e2",
                 color: "#991b1b",
+                borderRadius: "8px",
                 fontWeight: 700,
               }}
             >
@@ -269,13 +378,13 @@ export default function ProductsPage() {
           {loading ? (
             <div
               style={{
-                padding: "40px",
+                padding: "50px",
                 textAlign: "center",
               }}
             >
               Ürünler yükleniyor...
             </div>
-          ) : list.length > 0 ? (
+          ) : list.length ? (
             <div className="productGrid">
               {list.map((product) => (
                 <ProductCard
@@ -287,13 +396,13 @@ export default function ProductsPage() {
           ) : (
             <div
               style={{
-                padding: "40px",
+                padding: "50px",
                 textAlign: "center",
                 border: "1px solid #e2e8f0",
                 borderRadius: "10px",
               }}
             >
-              Bu filtreye uygun ürün bulunamadı.
+              Bu kategoride ürün bulunamadı.
             </div>
           )}
         </section>
