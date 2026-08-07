@@ -1,12 +1,13 @@
 import Link from "next/link";
 import {
   ShoppingCart,
-  BadgeTurkishLira,
+  CircleDollarSign,
   PackageCheck,
   TriangleAlert,
   ArrowUpRight,
   Boxes,
 } from "lucide-react";
+
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
@@ -69,50 +70,34 @@ export default async function AdminDashboard() {
       .limit(7),
   ]);
 
-  const orders =
-    ordersResult.data || [];
+  const orders = ordersResult.data || [];
+  const paidOrders = paidOrdersResult.data || [];
+  const products = productsResult.data || [];
+  const recentOrders = recentOrdersResult.data || [];
+  const lowStockProducts = lowStockResult.data || [];
 
-  const paidOrders =
-    paidOrdersResult.data || [];
-
-  const products =
-    productsResult.data || [];
-
-  const recentOrders =
-    recentOrdersResult.data || [];
-
-  const lowStockProducts =
-    lowStockResult.data || [];
-
-  const totalRevenue =
-    paidOrders.reduce(
-      (sum: number, order: any) =>
-        sum + Number(order.total || 0),
-      0
-    );
+  const totalRevenue = paidOrders.reduce(
+    (sum: number, order: any) =>
+      sum + Number(order.total || 0),
+    0
+  );
 
   const today = new Date();
 
-  const todaysOrders =
-    orders.filter((order: any) => {
-      const created =
-        new Date(order.created_at);
+  const todaysOrders = orders.filter((order: any) => {
+    const created = new Date(order.created_at);
 
-      return (
-        created.getFullYear() ===
-          today.getFullYear() &&
-        created.getMonth() ===
-          today.getMonth() &&
-        created.getDate() ===
-          today.getDate()
-      );
-    }).length;
+    return (
+      created.getFullYear() === today.getFullYear() &&
+      created.getMonth() === today.getMonth() &&
+      created.getDate() === today.getDate()
+    );
+  }).length;
 
-  const outOfStock =
-    products.filter(
-      (product: any) =>
-        Number(product.stock || 0) === 0
-    ).length;
+  const outOfStock = products.filter(
+    (product: any) =>
+      Number(product.stock || 0) === 0
+  ).length;
 
   return (
     <div
@@ -120,6 +105,8 @@ export default async function AdminDashboard() {
         padding: "34px 34px 70px",
       }}
     >
+      {/* ÜST BAŞLIK */}
+
       <div
         style={{
           display: "flex",
@@ -137,7 +124,7 @@ export default async function AdminDashboard() {
               letterSpacing: ".08em",
             }}
           >
-            TURAN OTO
+            TURAN OTO YEDEK PARÇA
           </small>
 
           <h1
@@ -155,8 +142,8 @@ export default async function AdminDashboard() {
               margin: 0,
             }}
           >
-            Sipariş, stok ve satış durumunu
-            buradan takip edin.
+            Sipariş, stok, ürün ve satış durumunu
+            tek ekrandan takip edin.
           </p>
         </div>
 
@@ -182,6 +169,8 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
+      {/* İSTATİSTİKLER */}
+
       <section
         style={{
           display: "grid",
@@ -193,42 +182,34 @@ export default async function AdminDashboard() {
         <StatCard
           label="Toplam Sipariş"
           value={String(orders.length)}
-          icon={
-            <ShoppingCart size={22} />
-          }
+          icon={<ShoppingCart size={22} />}
           note={`${todaysOrders} bugün`}
         />
 
         <StatCard
           label="Toplam Ciro"
           value={`${money(totalRevenue)} TL`}
-          icon={
-            <BadgeTurkishLira size={22} />
-          }
+          icon={<CircleDollarSign size={22} />}
           note="Ödenmiş siparişler"
         />
 
         <StatCard
           label="Toplam Ürün"
           value={String(products.length)}
-          icon={
-            <PackageCheck size={22} />
-          }
-          note="Aktif ürün kaydı"
+          icon={<PackageCheck size={22} />}
+          note="Sistemdeki ürünler"
         />
 
         <StatCard
           label="Stok Uyarısı"
-          value={String(
-            lowStockProducts.length
-          )}
-          icon={
-            <TriangleAlert size={22} />
-          }
+          value={String(lowStockProducts.length)}
+          icon={<TriangleAlert size={22} />}
           note={`${outOfStock} ürün stokta yok`}
           danger
         />
       </section>
+
+      {/* SİPARİŞ + STOK */}
 
       <section
         style={{
@@ -239,10 +220,12 @@ export default async function AdminDashboard() {
           marginTop: 22,
         }}
       >
+        {/* SON SİPARİŞLER */}
+
         <div style={panelStyle}>
           <PanelTitle
             title="Son Siparişler"
-            subtitle="Yeni siparişler otomatik olarak burada görünür."
+            subtitle="Yeni siparişler burada görüntülenir."
             href="/admin/siparisler"
             action="Tümünü Gör"
           />
@@ -255,79 +238,66 @@ export default async function AdminDashboard() {
             }}
           >
             {recentOrders.length ? (
-              recentOrders.map(
-                (order: any) => {
-                  const customer =
-                    [
-                      order
-                        .address_snapshot
-                        ?.first_name,
-                      order
-                        .address_snapshot
-                        ?.last_name,
-                    ]
-                      .filter(Boolean)
-                      .join(" ") ||
-                    "Müşteri";
+              recentOrders.map((order: any) => {
+                const customer =
+                  [
+                    order.address_snapshot?.first_name,
+                    order.address_snapshot?.last_name,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || "Müşteri";
 
-                  return (
-                    <Link
-                      href={`/admin/siparisler/${order.id}`}
-                      key={order.id}
-                      style={orderCard}
-                    >
-                      <div>
-                        <strong>
-                          #{order.order_no}
-                        </strong>
-
-                        <small
-                          style={muted}
-                        >
-                          {customer} •{" "}
-                          {new Date(
-                            order.created_at
-                          ).toLocaleString(
-                            "tr-TR"
-                          )}
-                        </small>
-                      </div>
-
-                      <span
-                        style={statusBadge(
-                          order.status
-                        )}
-                      >
-                        {order.status}
-                      </span>
-
+                return (
+                  <Link
+                    href={`/admin/siparisler/${order.id}`}
+                    key={order.id}
+                    style={orderCard}
+                  >
+                    <div>
                       <strong>
-                        {money(
-                          order.total
-                        )}{" "}
-                        TL
+                        #{order.order_no}
                       </strong>
 
-                      <ArrowUpRight
-                        size={17}
-                        color="#64748b"
-                      />
-                    </Link>
-                  );
-                }
-              )
+                      <small style={muted}>
+                        {customer}
+                        {" • "}
+                        {new Date(
+                          order.created_at
+                        ).toLocaleString("tr-TR")}
+                      </small>
+                    </div>
+
+                    <span
+                      style={statusBadge(order.status)}
+                    >
+                      {order.status}
+                    </span>
+
+                    <strong>
+                      {money(order.total)} TL
+                    </strong>
+
+                    <ArrowUpRight
+                      size={17}
+                      color="#64748b"
+                    />
+                  </Link>
+                );
+              })
             ) : (
               <div style={emptyStyle}>
-                Henüz sipariş yok.
+                Henüz sipariş bulunmuyor.
               </div>
             )}
           </div>
         </div>
 
+        {/* KRİTİK STOK */}
+
         <div style={panelStyle}>
           <PanelTitle
             title="Kritik Stok"
-            subtitle="Stok adedi 5 ve altındaki ürünler"
+            subtitle="5 adet ve altındaki ürünler"
             href="/admin/stok"
             action="Stok Takibi"
           />
@@ -340,77 +310,56 @@ export default async function AdminDashboard() {
             }}
           >
             {lowStockProducts.length ? (
-              lowStockProducts.map(
-                (product: any) => (
+              lowStockProducts.map((product: any) => (
+                <div
+                  key={product.id}
+                  style={stockRow}
+                >
+                  <img
+                    src={
+                      product.image_url ||
+                      "/opar-filtre-banner.png"
+                    }
+                    alt={product.product_name}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      objectFit: "contain",
+                    }}
+                  />
+
                   <div
-                    key={product.id}
-                    style={stockRow}
+                    style={{
+                      minWidth: 0,
+                    }}
                   >
-                    <img
-                      src={
-                        product.image_url ||
-                        "/opar-filtre-banner.png"
-                      }
-                      alt={
-                        product.product_name
-                      }
+                    <strong
                       style={{
-                        width: 48,
-                        height: 48,
-                        objectFit:
-                          "contain",
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        minWidth: 0,
+                        display: "block",
+                        fontSize: 13,
                       }}
                     >
-                      <strong
-                        style={{
-                          display:
-                            "block",
-                          fontSize: 13,
-                        }}
-                      >
-                        {
-                          product.product_name
-                        }
-                      </strong>
+                      {product.product_name}
+                    </strong>
 
-                      <small
-                        style={muted}
-                      >
-                        OEM:{" "}
-                        {
-                          product.product_code
-                        }
-                      </small>
-                    </div>
-
-                    <b
-                      style={{
-                        color:
-                          Number(
-                            product.stock ||
-                              0
-                          ) === 0
-                            ? "#b91c1c"
-                            : "#b45309",
-                        whiteSpace:
-                          "nowrap",
-                      }}
-                    >
-                      {Number(
-                        product.stock ||
-                          0
-                      )}{" "}
-                      adet
-                    </b>
+                    <small style={muted}>
+                      OEM: {product.product_code}
+                    </small>
                   </div>
-                )
-              )
+
+                  <b
+                    style={{
+                      color:
+                        Number(product.stock || 0) === 0
+                          ? "#b91c1c"
+                          : "#b45309",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {Number(product.stock || 0)} adet
+                  </b>
+                </div>
+              ))
             ) : (
               <div style={emptyStyle}>
                 Kritik stok bulunmuyor.
@@ -419,6 +368,8 @@ export default async function AdminDashboard() {
           </div>
         </div>
       </section>
+
+      {/* HIZLI İŞLEMLER */}
 
       <section
         style={{
@@ -435,6 +386,7 @@ export default async function AdminDashboard() {
           }}
         >
           <Boxes size={20} />
+
           <h2
             style={{
               margin: 0,
@@ -456,31 +408,35 @@ export default async function AdminDashboard() {
           <QuickLink
             href="/admin/urunler"
             title="Ürünleri Yönet"
-            text="Ürün ekle, düzenle, görsel ve fiyat değiştir."
+            text="Ürün ekle, düzenle, fiyat ve stok değiştir."
           />
 
           <QuickLink
             href="/admin/excel-yukle"
             title="Excel'den Yükle"
-            text="Mevcut toplu Excel ürün yükleme sistemine git."
+            text="Mevcut Excel toplu ürün yükleme sistemini kullan."
           />
 
           <QuickLink
             href="/admin/siparisler"
             title="Sipariş Takibi"
-            text="Ödeme, hazırlık ve kargo durumlarını değiştir."
+            text="Yeni ve mevcut siparişleri görüntüle."
           />
 
           <QuickLink
             href="/admin/stok"
             title="Stok Takibi"
-            text="Kritik stokları ve stokta olmayan ürünleri gör."
+            text="Kritik ve tükenen ürünleri takip et."
           />
         </div>
       </section>
     </div>
   );
 }
+
+/* ============================= */
+/* COMPONENTLER */
+/* ============================= */
 
 function StatCard({
   label,
@@ -509,11 +465,9 @@ function StatCard({
       <div
         style={{
           display: "flex",
-          justifyContent:
-            "space-between",
+          justifyContent: "space-between",
           gap: 14,
-          alignItems:
-            "flex-start",
+          alignItems: "flex-start",
         }}
       >
         <div>
@@ -521,8 +475,7 @@ function StatCard({
             style={{
               color: "#64748b",
               fontWeight: 800,
-              letterSpacing:
-                ".04em",
+              letterSpacing: ".04em",
             }}
           >
             {label}
@@ -645,8 +598,7 @@ function QuickLink({
         display: "block",
         padding: 16,
         borderRadius: 11,
-        border:
-          "1px solid #e2e8f0",
+        border: "1px solid #e2e8f0",
         background: "#f8fafc",
         color: "#0f172a",
         textDecoration: "none",
@@ -672,6 +624,10 @@ function QuickLink({
     </Link>
   );
 }
+
+/* ============================= */
+/* STYLES */
+/* ============================= */
 
 const panelStyle: React.CSSProperties = {
   background: "#fff",
@@ -702,8 +658,7 @@ const stockRow: React.CSSProperties = {
   gap: 12,
   alignItems: "center",
   padding: "10px 0",
-  borderBottom:
-    "1px solid #f1f5f9",
+  borderBottom: "1px solid #f1f5f9",
 };
 
 const muted: React.CSSProperties = {
