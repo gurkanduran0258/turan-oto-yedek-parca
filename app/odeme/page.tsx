@@ -155,7 +155,9 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           userId,
           email,
+
           address: {
+            title: selectedAddress.title,
             first_name:
               selectedAddress.first_name,
             last_name:
@@ -166,16 +168,22 @@ export default function CheckoutPage() {
               selectedAddress.city,
             district:
               selectedAddress.district,
+            neighborhood:
+              selectedAddress.neighborhood,
             address_line:
               selectedAddress.address_line,
             postal_code:
               selectedAddress.postal_code,
           },
+
           items: items.map((item) => ({
             id: item.id,
             name: item.name,
             oem: item.oem,
-            price: Number(item.price || 0),
+            image: item.image,
+            price: Number(
+              item.price || 0
+            ),
             qty: item.qty,
           })),
         }),
@@ -211,24 +219,17 @@ export default function CheckoutPage() {
     if (result.paymentPageUrl) {
       window.location.href =
         result.paymentPageUrl;
+
       return;
     }
 
     if (result.checkoutFormContent) {
-      const paymentWindow =
-        window.open("", "_self");
-
-      if (!paymentWindow) {
-        throw new Error(
-          "Ödeme ekranı açılamadı."
-        );
-      }
-
-      paymentWindow.document.open();
-      paymentWindow.document.write(
+      document.open();
+      document.write(
         result.checkoutFormContent
       );
-      paymentWindow.document.close();
+      document.close();
+
       return;
     }
 
@@ -248,20 +249,28 @@ export default function CheckoutPage() {
 
     const addressSnapshot = {
       title: selectedAddress.title,
+
       first_name:
         selectedAddress.first_name,
+
       last_name:
         selectedAddress.last_name,
+
       phone:
         selectedAddress.phone,
+
       city:
         selectedAddress.city,
+
       district:
         selectedAddress.district,
+
       neighborhood:
         selectedAddress.neighborhood,
+
       address_line:
         selectedAddress.address_line,
+
       postal_code:
         selectedAddress.postal_code,
     };
@@ -273,22 +282,29 @@ export default function CheckoutPage() {
       .from("orders")
       .insert({
         user_id: userId,
+
         order_no: orderNo,
+
         status:
           paymentMethod === "Havale / EFT"
             ? "Ödeme Bekleniyor"
             : "Yeni",
+
         subtotal: Number(
           total.toFixed(2)
         ),
+
         shipping: Number(
           shipping.toFixed(2)
         ),
+
         total: Number(
           grandTotal.toFixed(2)
         ),
+
         payment_method:
           paymentMethod,
+
         address_snapshot:
           addressSnapshot,
       })
@@ -301,17 +317,30 @@ export default function CheckoutPage() {
 
     const orderItems = items.map(
       (item) => ({
-        order_id: orderData.id,
-        product_id: item.id,
-        product_code: item.oem,
-        product_name: item.name,
-        image_url: item.image,
+        order_id:
+          orderData.id,
+
+        product_id:
+          item.id,
+
+        product_code:
+          item.oem,
+
+        product_name:
+          item.name,
+
+        image_url:
+          item.image,
+
         unit_price: Number(
           Number(
             item.price || 0
           ).toFixed(2)
         ),
-        quantity: item.qty,
+
+        quantity:
+          item.qty,
+
         line_total: Number(
           (
             Number(
@@ -331,7 +360,10 @@ export default function CheckoutPage() {
       await supabase
         .from("orders")
         .delete()
-        .eq("id", orderData.id);
+        .eq(
+          "id",
+          orderData.id
+        );
 
       throw itemsError;
     }
@@ -516,11 +548,48 @@ export default function CheckoutPage() {
                         />
 
                         <div>
-                          <strong>
-                            {address.title}
-                          </strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems:
+                                "center",
+                              gap: "10px",
+                              flexWrap:
+                                "wrap",
+                            }}
+                          >
+                            <strong>
+                              {address.title}
+                            </strong>
 
-                          <p>
+                            {address.is_default ? (
+                              <span
+                                style={{
+                                  background:
+                                    "#dcfce7",
+                                  color:
+                                    "#166534",
+                                  borderRadius:
+                                    "999px",
+                                  padding:
+                                    "3px 8px",
+                                  fontSize:
+                                    "11px",
+                                  fontWeight:
+                                    800,
+                                }}
+                              >
+                                Varsayılan
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <p
+                            style={{
+                              margin:
+                                "8px 0 4px",
+                            }}
+                          >
                             {
                               address.first_name
                             }{" "}
@@ -552,6 +621,8 @@ export default function CheckoutPage() {
                             style={{
                               color:
                                 "#64748b",
+                              margin:
+                                "4px 0",
                             }}
                           >
                             {
@@ -567,6 +638,8 @@ export default function CheckoutPage() {
                             style={{
                               color:
                                 "#64748b",
+                              margin:
+                                "4px 0",
                             }}
                           >
                             {
@@ -597,8 +670,9 @@ export default function CheckoutPage() {
                 </strong>
 
                 <p>
-                  Önce teslimat adresi
-                  ekleyin.
+                  Sipariş verebilmek
+                  için önce teslimat
+                  adresi ekleyin.
                 </p>
 
                 <Link
@@ -643,7 +717,6 @@ export default function CheckoutPage() {
                 <input
                   type="radio"
                   name="payment"
-                  value="Kredi Kartı"
                   checked={
                     paymentMethod ===
                     "Kredi Kartı"
@@ -667,8 +740,8 @@ export default function CheckoutPage() {
                       marginTop: "5px",
                     }}
                   >
-                    iyzico Sandbox güvenli
-                    ödeme ekranına
+                    iyzico güvenli ödeme
+                    ekranına
                     yönlendirileceksiniz.
                   </small>
                 </div>
@@ -685,7 +758,6 @@ export default function CheckoutPage() {
                 <input
                   type="radio"
                   name="payment"
-                  value="Havale / EFT"
                   checked={
                     paymentMethod ===
                     "Havale / EFT"
@@ -709,8 +781,9 @@ export default function CheckoutPage() {
                       marginTop: "5px",
                     }}
                   >
-                    Sipariş ödeme bekliyor
-                    olarak oluşturulur.
+                    Siparişiniz ödeme
+                    bekliyor olarak
+                    oluşturulur.
                   </small>
                 </div>
               </label>
@@ -726,7 +799,6 @@ export default function CheckoutPage() {
                 <input
                   type="radio"
                   name="payment"
-                  value="B2B Cari Hesap"
                   checked={
                     paymentMethod ===
                     "B2B Cari Hesap"
@@ -847,14 +919,19 @@ export default function CheckoutPage() {
           />
 
           <p style={summaryRow}>
-            <span>Ara Toplam</span>
+            <span>
+              Ara Toplam
+            </span>
+
             <b>
               {formatMoney(total)} TL
             </b>
           </p>
 
           <p style={summaryRow}>
-            <span>Kargo</span>
+            <span>
+              Kargo
+            </span>
 
             <b>
               {shipping === 0
@@ -874,7 +951,9 @@ export default function CheckoutPage() {
                 "1px solid #e2e8f0",
             }}
           >
-            <span>Toplam</span>
+            <span>
+              Toplam
+            </span>
 
             <b>
               {formatMoney(
@@ -889,7 +968,8 @@ export default function CheckoutPage() {
               style={{
                 padding: "12px",
                 margin: "15px 0",
-                background: "#fee2e2",
+                background:
+                  "#fee2e2",
                 color: "#991b1b",
                 borderRadius: "8px",
                 fontWeight: 700,
@@ -939,9 +1019,8 @@ export default function CheckoutPage() {
                 lineHeight: 1.5,
               }}
             >
-              Şu an Sandbox/test
-              ortamındasınız. Gerçek
-              para çekilmez.
+              Sandbox test ortamında
+              gerçek para çekilmez.
             </p>
           ) : null}
         </aside>
