@@ -11,8 +11,17 @@ import {
   MapPin,
   ChevronDown,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+
+import {
+  FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import type {
+  User as SupabaseUser,
+} from "@supabase/supabase-js";
 
 import { useCart } from "./CartProvider";
 import { supabase } from "@/lib/supabase-client";
@@ -20,12 +29,24 @@ import { supabase } from "@/lib/supabase-client";
 export default function Header() {
   const { count } = useCart();
 
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] =
+    useState<SupabaseUser | null>(null);
 
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [loadingUser, setLoadingUser] =
+    useState(true);
 
+  const [menuOpen, setMenuOpen] =
+    useState(false);
+
+  const [searchQuery, setSearchQuery] =
+    useState("");
+
+  const menuRef =
+    useRef<HTMLDivElement | null>(null);
+
+  /*
+   * KULLANICI OTURUMU
+   */
   useEffect(() => {
     let mounted = true;
 
@@ -44,14 +65,20 @@ export default function Header() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoadingUser(false);
+    } =
+      supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setUser(
+            session?.user ?? null
+          );
 
-      if (!session?.user) {
-        setMenuOpen(false);
-      }
-    });
+          setLoadingUser(false);
+
+          if (!session?.user) {
+            setMenuOpen(false);
+          }
+        }
+      );
 
     return () => {
       mounted = false;
@@ -59,17 +86,27 @@ export default function Header() {
     };
   }, []);
 
+  /*
+   * MENÜ DIŞINA TIKLANDIĞINDA KAPAT
+   */
   useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
+    function handleOutsideClick(
+      event: MouseEvent
+    ) {
       if (
         menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
+        !menuRef.current.contains(
+          event.target as Node
+        )
       ) {
         setMenuOpen(false);
       }
     }
 
-    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener(
+      "mousedown",
+      handleOutsideClick
+    );
 
     return () => {
       document.removeEventListener(
@@ -79,6 +116,33 @@ export default function Header() {
     };
   }, []);
 
+  /*
+   * ÜST ARAMA
+   */
+  function handleSearch(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    const query =
+      searchQuery.trim();
+
+    if (!query) {
+      window.location.href =
+        "/urunler";
+
+      return;
+    }
+
+    window.location.href =
+      `/urunler?q=${encodeURIComponent(
+        query
+      )}`;
+  }
+
+  /*
+   * ÇIKIŞ
+   */
   async function handleLogout() {
     await supabase.auth.signOut();
 
@@ -90,7 +154,10 @@ export default function Header() {
 
   const fullName =
     user?.user_metadata?.full_name ||
-    [user?.user_metadata?.first_name, user?.user_metadata?.last_name]
+    [
+      user?.user_metadata?.first_name,
+      user?.user_metadata?.last_name,
+    ]
       .filter(Boolean)
       .join(" ") ||
     "";
@@ -103,45 +170,76 @@ export default function Header() {
 
   return (
     <>
+      {/* ÜST BAR */}
       <div className="topbar">
         <div className="container topbarInner">
           <span>
-            🚚 Aynı Gün Kargo &nbsp; • &nbsp; %100 Orijinal Parça
-            &nbsp; • &nbsp; Turan Oto Güvencesi
+            🚚 Aynı Gün Kargo
+            &nbsp; • &nbsp;
+            %100 Orijinal Parça
+            &nbsp; • &nbsp;
+            Turan Oto Güvencesi
           </span>
 
           <span>
-            Bayi / Kurumsal Giriş &nbsp; Sipariş Takip &nbsp; Yardım
+            Bayi / Kurumsal Giriş
+            &nbsp;
+            Sipariş Takip
+            &nbsp;
+            Yardım
           </span>
         </div>
       </div>
 
+      {/* HEADER */}
       <header className="header">
         <div className="container headerInner">
-          <Link href="/" className="logo">
+
+          {/* LOGO */}
+          <Link
+            href="/"
+            className="logo"
+          >
             <img
               src="/turan-oto-logo-transparent.png"
               alt="Turan Oto Yedek Parça"
             />
           </Link>
 
-          <form className="search" action="/urunler">
+          {/* ARAMA */}
+          <form
+            className="search"
+            onSubmit={handleSearch}
+          >
             <input
-              name="q"
+              type="search"
+              value={searchQuery}
+              onChange={(event) =>
+                setSearchQuery(
+                  event.target.value
+                )
+              }
               placeholder="OEM No, ürün adı veya şasi numarası ile arayın..."
+              autoComplete="off"
             />
 
-            <button aria-label="Ara">
+            <button
+              type="submit"
+              aria-label="Ara"
+            >
               <Search size={22} />
             </button>
           </form>
 
+          {/* SAĞ MENÜ */}
           <nav className="headerActions">
+
             <a href="tel:02122271217">
               <Phone size={18} />
               0212 227 12 17
             </a>
 
+            {/* KULLANICI */}
             {loadingUser ? (
               <span
                 style={{
@@ -164,14 +262,18 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={() =>
-                    setMenuOpen((current) => !current)
+                    setMenuOpen(
+                      (current) =>
+                        !current
+                    )
                   }
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
                     border: "none",
-                    background: "transparent",
+                    background:
+                      "transparent",
                     cursor: "pointer",
                     font: "inherit",
                     color: "inherit",
@@ -179,15 +281,18 @@ export default function Header() {
                   }}
                 >
                   <User size={18} />
+
                   {firstName}
 
                   <ChevronDown
                     size={14}
                     style={{
-                      transform: menuOpen
-                        ? "rotate(180deg)"
-                        : "rotate(0deg)",
-                      transition: "transform 0.2s",
+                      transform:
+                        menuOpen
+                          ? "rotate(180deg)"
+                          : "rotate(0deg)",
+                      transition:
+                        "transform 0.2s",
                     }}
                   />
                 </button>
@@ -195,40 +300,55 @@ export default function Header() {
                 {menuOpen ? (
                   <div
                     style={{
-                      position: "absolute",
+                      position:
+                        "absolute",
                       top: "34px",
                       right: 0,
-                      minWidth: "210px",
-                      background: "#ffffff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "10px",
+                      minWidth:
+                        "220px",
+                      background:
+                        "#ffffff",
+                      border:
+                        "1px solid #e2e8f0",
+                      borderRadius:
+                        "10px",
                       boxShadow:
                         "0 12px 35px rgba(0,0,0,0.14)",
                       zIndex: 9999,
-                      overflow: "hidden",
+                      overflow:
+                        "hidden",
                     }}
                   >
                     <div
                       style={{
-                        padding: "13px 14px",
-                        borderBottom: "1px solid #eef2f7",
+                        padding:
+                          "13px 14px",
+                        borderBottom:
+                          "1px solid #eef2f7",
                       }}
                     >
                       <strong
                         style={{
-                          display: "block",
-                          color: "#0f172a",
-                          fontSize: "14px",
+                          display:
+                            "block",
+                          color:
+                            "#0f172a",
+                          fontSize:
+                            "14px",
                         }}
                       >
-                        {fullName || firstName}
+                        {fullName ||
+                          firstName}
                       </strong>
 
                       <small
                         style={{
-                          display: "block",
-                          marginTop: "3px",
-                          color: "#64748b",
+                          display:
+                            "block",
+                          marginTop:
+                            "3px",
+                          color:
+                            "#64748b",
                         }}
                       >
                         {user.email}
@@ -237,44 +357,75 @@ export default function Header() {
 
                     <Link
                       href="/hesabim"
-                      onClick={() => setMenuOpen(false)}
-                      style={menuItemStyle}
+                      onClick={() =>
+                        setMenuOpen(
+                          false
+                        )
+                      }
+                      style={
+                        menuItemStyle
+                      }
                     >
-                      <User size={16} />
-                      Hesabım
+                      <User
+                        size={16}
+                      />
+                      Profilim
                     </Link>
 
                     <Link
                       href="/hesabim/siparisler"
-                      onClick={() => setMenuOpen(false)}
-                      style={menuItemStyle}
+                      onClick={() =>
+                        setMenuOpen(
+                          false
+                        )
+                      }
+                      style={
+                        menuItemStyle
+                      }
                     >
-                      <Package size={16} />
+                      <Package
+                        size={16}
+                      />
                       Siparişlerim
                     </Link>
 
                     <Link
                       href="/hesabim/adresler"
-                      onClick={() => setMenuOpen(false)}
-                      style={menuItemStyle}
+                      onClick={() =>
+                        setMenuOpen(
+                          false
+                        )
+                      }
+                      style={
+                        menuItemStyle
+                      }
                     >
-                      <MapPin size={16} />
+                      <MapPin
+                        size={16}
+                      />
                       Adreslerim
                     </Link>
 
                     <button
                       type="button"
-                      onClick={handleLogout}
+                      onClick={
+                        handleLogout
+                      }
                       style={{
                         ...menuItemStyle,
                         width: "100%",
                         border: "none",
-                        background: "#ffffff",
-                        cursor: "pointer",
-                        color: "#b91c1c",
+                        background:
+                          "#ffffff",
+                        cursor:
+                          "pointer",
+                        color:
+                          "#b91c1c",
                       }}
                     >
-                      <LogOut size={16} />
+                      <LogOut
+                        size={16}
+                      />
                       Çıkış Yap
                     </button>
                   </div>
@@ -287,17 +438,24 @@ export default function Header() {
               </Link>
             )}
 
+            {/* SEPET */}
             <Link href="/sepet">
-              <ShoppingCart size={18} />
+              <ShoppingCart
+                size={18}
+              />
+
               Sepet
+
               <b>{count}</b>
             </Link>
           </nav>
         </div>
       </header>
 
+      {/* KIRMIZI MENÜ */}
       <nav className="mainNav">
         <div className="container navInner">
+
           <Link href="/urunler">
             ☰ TÜM KATEGORİLER
           </Link>
@@ -325,6 +483,7 @@ export default function Header() {
           <Link href="/sasi-sorgula">
             ŞASİ SORGULA
           </Link>
+
         </div>
       </nav>
     </>
