@@ -15,22 +15,18 @@ function createAuthorization(
   bodyText: string
 ) {
   const randomKey = `${Date.now()}${Math.floor(
-    Math.random() *
-      1_000_000_000
+    Math.random() * 1_000_000_000
   )}`;
 
-  const signature =
-    createHmac(
-      "sha256",
-      secretKey
+  const signature = createHmac(
+    "sha256",
+    secretKey
+  )
+    .update(
+      randomKey + uriPath + bodyText,
+      "utf8"
     )
-      .update(
-        randomKey +
-          uriPath +
-          bodyText,
-        "utf8"
-      )
-      .digest("hex");
+    .digest("hex");
 
   const authorizationString =
     `apiKey:${apiKey}` +
@@ -49,23 +45,15 @@ function createAuthorization(
   };
 }
 
-function getSiteUrl(
-  request: Request
-) {
+function getSiteUrl(request: Request) {
   const configured =
-    process.env
-      .NEXT_PUBLIC_SITE_URL
-      ?.trim();
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
   if (configured) {
-    return configured.replace(
-      /\/$/,
-      ""
-    );
+    return configured.replace(/\/$/, "");
   }
 
-  const url =
-    new URL(request.url);
+  const url = new URL(request.url);
 
   return `${url.protocol}//${url.host}`;
 }
@@ -73,56 +61,44 @@ function getSiteUrl(
 function createOrderNo() {
   const now = new Date();
 
-  const year =
-    now.getFullYear();
+  const year = now.getFullYear();
 
-  const month =
-    String(
-      now.getMonth() + 1
-    ).padStart(2, "0");
+  const month = String(
+    now.getMonth() + 1
+  ).padStart(2, "0");
 
-  const day =
-    String(
-      now.getDate()
-    ).padStart(2, "0");
+  const day = String(
+    now.getDate()
+  ).padStart(2, "0");
 
-  const random =
-    Math.floor(
-      100000 +
-        Math.random() *
-          900000
-    );
+  const random = Math.floor(
+    100000 + Math.random() * 900000
+  );
 
   return `TO-${year}${month}${day}-${random}`;
 }
 
-export async function POST(
-  request: Request
-) {
-  const siteUrl =
-    getSiteUrl(request);
+export async function POST(request: Request) {
+  const siteUrl = getSiteUrl(request);
 
   try {
+    /*
+     * ENVIRONMENT VARIABLES
+     */
     const apiKey =
-      process.env
-        .IYZICO_API_KEY
-        ?.trim();
+      process.env.IYZICO_API_KEY?.trim();
 
     const secretKey =
-      process.env
-        .IYZICO_SECRET_KEY
-        ?.trim();
+      process.env.IYZICO_SECRET_KEY?.trim();
 
     const baseUrl =
-      process.env
-        .IYZICO_BASE_URL
-        ?.trim();
+      process.env.IYZICO_BASE_URL?.trim();
 
-    if (
-      !apiKey ||
-      !secretKey ||
-      !baseUrl
-    ) {
+    if (!apiKey || !secretKey || !baseUrl) {
+      console.error(
+        "iyzico environment variable eksik."
+      );
+
       return NextResponse.redirect(
         `${siteUrl}/odeme?iyzico=config-error`,
         303
@@ -130,18 +106,20 @@ export async function POST(
     }
 
     /*
-     * IYZICO CALLBACK TOKEN
+     * IYZICO CALLBACK'TEN TOKEN AL
      */
     const formData =
       await request.formData();
 
-    const token =
-      String(
-        formData.get("token") ||
-          ""
-      ).trim();
+    const token = String(
+      formData.get("token") || ""
+    ).trim();
 
     if (!token) {
+      console.error(
+        "iyzico callback token bulunamadı."
+      );
+
       return NextResponse.redirect(
         `${siteUrl}/odeme?iyzico=token-yok`,
         303
@@ -149,8 +127,8 @@ export async function POST(
     }
 
     /*
-     * IYZICO'DAN ÖDEMEYİ
-     * TEKRAR DOĞRULA
+     * IYZICO ÖDEME SONUCUNU
+     * SUNUCU TARAFINDA TEKRAR DOĞRULA
      */
     const retrieveBody = {
       locale: "tr",
@@ -158,9 +136,7 @@ export async function POST(
     };
 
     const bodyText =
-      JSON.stringify(
-        retrieveBody
-      );
+      JSON.stringify(retrieveBody);
 
     const {
       authorization,
@@ -172,44 +148,54 @@ export async function POST(
       bodyText
     );
 
-    const response =
-      await fetch(
-        `${baseUrl.replace(
-          /\/$/,
-          ""
-        )}${ENDPOINT}`,
-        {
-          method: "POST",
+    const response = await fetch(
+      `${baseUrl.replace(
+        /\/$/,
+        ""
+      )}${ENDPOINT}`,
+      {
+        method: "POST",
 
-          headers: {
-            Authorization:
-              authorization,
+        headers: {
+          Authorization: authorization,
 
-            "x-iyzi-rnd":
-              randomKey,
+          "x-iyzi-rnd":
+            randomKey,
 
-            "Content-Type":
-              "application/json",
-          },
+          "Content-Type":
+            "application/json",
+        },
 
-          body: bodyText,
+        body: bodyText,
 
-          cache: "no-store",
-        }
-      );
+        cache: "no-store",
+      }
+    );
 
-    const result =
-      await response.json();
+    const result = await response.json();
 
+    console.log(
+      "iyzico ödeme sonucu:",
+      {
+        status: result.status,
+        paymentStatus:
+          result.paymentStatus,
+        paymentId:
+          result.paymentId,
+        basketId:
+          result.basketId,
+      }
+    );
+
+    /*
+     * ÖDEME GERÇEKTEN BAŞARILI MI?
+     */
     const paid =
       response.ok &&
-      result.status ===
-        "success" &&
+      result.status === "success" &&
       result.paymentStatus ===
         "SUCCESS" &&
-      Number(
-        result.fraudStatus
-      ) === 1;
+      Number(result.fraudStatus) === 1;
 
     if (!paid) {
       const message =
@@ -225,33 +211,39 @@ export async function POST(
     }
 
     /*
-     * SUPABASE
+     * SUPABASE ADMIN
      */
     const supabase =
       getSupabaseAdmin();
 
     /*
-     * ÖDEME ÖNCESİ SAKLANAN
-     * SEPETİ BUL
+     * ÖDEME BAŞLATILIRKEN
+     * KAYDETTİĞİMİZ CHECKOUT SESSION
      */
     const {
       data: checkout,
       error: checkoutError,
     } = await supabase
-      .from(
-        "checkout_sessions"
-      )
+      .from("checkout_sessions")
       .select("*")
       .eq("token", token)
       .maybeSingle();
 
-    if (
-      checkoutError ||
-      !checkout
-    ) {
+    if (checkoutError) {
       console.error(
-        "Checkout bulunamadı:",
+        "Checkout session hatası:",
         checkoutError
+      );
+
+      return NextResponse.redirect(
+        `${siteUrl}/odeme?iyzico=checkout-error`,
+        303
+      );
+    }
+
+    if (!checkout) {
+      console.error(
+        "Checkout session bulunamadı."
       );
 
       return NextResponse.redirect(
@@ -261,12 +253,36 @@ export async function POST(
     }
 
     /*
-     * CALLBACK TEKRAR GELİRSE
+     * BASKET ID KONTROLÜ
+     */
+    if (
+      result.basketId &&
+      checkout.basket_id &&
+      String(result.basketId) !==
+        String(checkout.basket_id)
+    ) {
+      console.error(
+        "Basket ID uyuşmuyor.",
+        {
+          iyzico:
+            result.basketId,
+          checkout:
+            checkout.basket_id,
+        }
+      );
+
+      return NextResponse.redirect(
+        `${siteUrl}/odeme?iyzico=basket-error`,
+        303
+      );
+    }
+
+    /*
+     * AYNI CALLBACK İKİ KEZ GELİRSE
      * İKİNCİ SİPARİŞ OLUŞTURMA.
      */
     if (
-      checkout.status ===
-        "paid" &&
+      checkout.status === "paid" &&
       checkout.order_id
     ) {
       const {
@@ -288,8 +304,7 @@ export async function POST(
             existingOrder.order_no
           )}&paymentId=${encodeURIComponent(
             String(
-              result.paymentId ||
-                ""
+              result.paymentId || ""
             )
           )}`,
           303
@@ -297,11 +312,35 @@ export async function POST(
       }
     }
 
+    /*
+     * CHECKOUT ITEMS
+     */
+    const checkoutItems =
+      Array.isArray(checkout.items)
+        ? checkout.items
+        : [];
+
+    if (
+      checkoutItems.length === 0
+    ) {
+      console.error(
+        "Checkout ürünleri bulunamadı."
+      );
+
+      return NextResponse.redirect(
+        `${siteUrl}/odeme?iyzico=items-yok`,
+        303
+      );
+    }
+
+    /*
+     * SİPARİŞ NUMARASI
+     */
     const orderNo =
       createOrderNo();
 
     /*
-     * ORDERS TABLOSUNA YAZ
+     * ORDERS TABLOSUNA SİPARİŞİ EKLE
      */
     const {
       data: order,
@@ -319,13 +358,19 @@ export async function POST(
           "Ödendi",
 
         subtotal:
-          checkout.subtotal,
+          Number(
+            checkout.subtotal || 0
+          ),
 
         shipping:
-          checkout.shipping,
+          Number(
+            checkout.shipping || 0
+          ),
 
         total:
-          checkout.total,
+          Number(
+            checkout.total || 0
+          ),
 
         payment_method:
           "Kredi Kartı / iyzico",
@@ -333,15 +378,14 @@ export async function POST(
         address_snapshot:
           checkout.address_snapshot,
       })
-      .select("id,order_no")
+      .select(
+        "id,order_no"
+      )
       .single();
 
-    if (
-      orderError ||
-      !order
-    ) {
+    if (orderError || !order) {
       console.error(
-        "Sipariş oluşturma:",
+        "Sipariş oluşturulamadı:",
         orderError
       );
 
@@ -352,67 +396,61 @@ export async function POST(
     }
 
     /*
-     * ORDER ITEMS
+     * ORDER_ITEMS HAZIRLA
      */
-    const checkoutItems =
-      Array.isArray(
-        checkout.items
-      )
-        ? checkout.items
-        : [];
-
     const orderItems =
       checkoutItems.map(
-        (item: any) => ({
-          order_id:
-            order.id,
-
-          product_id:
-            item.id,
-
-          product_code:
-            item.oem ||
-            null,
-
-          product_name:
-            item.name ||
-            "Ürün",
-
-          image_url:
-            item.image ||
-            null,
-
-          unit_price:
-            Number(
-              item.price || 0
-            ),
-
-          quantity:
+        (item: any) => {
+          const quantity =
             Math.max(
               1,
               Number(
                 item.qty || 1
               )
-            ),
+            );
 
-          line_total:
+          const price =
             Number(
-              (
-                Number(
-                  item.price || 0
-                ) *
-                Math.max(
-                  1,
-                  Number(
-                    item.qty ||
-                      1
-                  )
-                )
-              ).toFixed(2)
-            ),
-        })
+              item.price || 0
+            );
+
+          return {
+            order_id:
+              order.id,
+
+            product_id:
+              Number(item.id),
+
+            product_code:
+              item.oem || null,
+
+            product_name:
+              item.name ||
+              "Ürün",
+
+            image_url:
+              item.image ||
+              null,
+
+            unit_price:
+              price,
+
+            quantity,
+
+            line_total:
+              Number(
+                (
+                  price *
+                  quantity
+                ).toFixed(2)
+              ),
+          };
+        }
       );
 
+    /*
+     * ORDER_ITEMS TABLOSUNA YAZ
+     */
     const {
       error: itemError,
     } = await supabase
@@ -421,12 +459,12 @@ export async function POST(
 
     if (itemError) {
       console.error(
-        "Sipariş ürünleri:",
+        "Sipariş ürünleri eklenemedi:",
         itemError
       );
 
       /*
-       * YARIM SİPARİŞİ GERİ AL.
+       * YARIM OLUŞAN SİPARİŞİ SİL.
        */
       await supabase
         .from("orders")
@@ -443,11 +481,122 @@ export async function POST(
     }
 
     /*
+     * =====================================
+     * STOK DÜŞÜRME
+     * =====================================
+     */
+    for (
+      const item of checkoutItems
+    ) {
+      const productId =
+        Number(item.id);
+
+      const quantity =
+        Math.max(
+          1,
+          Number(
+            item.qty || 1
+          )
+        );
+
+      if (
+        !Number.isInteger(
+          productId
+        ) ||
+        productId <= 0
+      ) {
+        console.error(
+          "Geçersiz product id:",
+          item.id
+        );
+
+        continue;
+      }
+
+      /*
+       * MEVCUT STOK
+       */
+      const {
+        data: product,
+        error: productError,
+      } = await supabase
+        .from("products")
+        .select(
+          "id,product_code,product_name,stock"
+        )
+        .eq(
+          "id",
+          productId
+        )
+        .maybeSingle();
+
+      if (
+        productError ||
+        !product
+      ) {
+        console.error(
+          "Stok ürünü bulunamadı:",
+          productId,
+          productError
+        );
+
+        continue;
+      }
+
+      const currentStock =
+        Number(
+          product.stock || 0
+        );
+
+      /*
+       * STOK 0'IN ALTINA DÜŞMESİN
+       */
+      const newStock =
+        Math.max(
+          0,
+          currentStock -
+            quantity
+        );
+
+      /*
+       * PRODUCTS TABLOSUNU GÜNCELLE
+       */
+      const {
+        error: stockError,
+      } = await supabase
+        .from("products")
+        .update({
+          stock:
+            newStock,
+
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "id",
+          productId
+        );
+
+      if (stockError) {
+        console.error(
+          "Stok güncellenemedi:",
+          productId,
+          stockError
+        );
+      } else {
+        console.log(
+          `Stok güncellendi: ${product.product_code} | ${currentStock} -> ${newStock}`
+        );
+      }
+    }
+
+    /*
      * CHECKOUT SESSION'I
      * ÖDENDİ OLARAK İŞARETLE
      */
     const {
-      error: sessionUpdateError,
+      error:
+        sessionUpdateError,
     } = await supabase
       .from(
         "checkout_sessions"
@@ -468,13 +617,16 @@ export async function POST(
         updated_at:
           new Date().toISOString(),
       })
-      .eq("id", checkout.id);
+      .eq(
+        "id",
+        checkout.id
+      );
 
     if (
       sessionUpdateError
     ) {
       console.error(
-        "Checkout update:",
+        "Checkout session güncellenemedi:",
         sessionUpdateError
       );
     }
@@ -487,15 +639,14 @@ export async function POST(
         order.order_no
       )}&paymentId=${encodeURIComponent(
         String(
-          result.paymentId ||
-            ""
+          result.paymentId || ""
         )
       )}`,
       303
     );
   } catch (error) {
     console.error(
-      "iyzico callback:",
+      "iyzico callback genel hata:",
       error
     );
 
