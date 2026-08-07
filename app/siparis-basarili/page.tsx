@@ -1,13 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function OrderSuccessPage() {
-  const params = useSearchParams();
+function OrderSuccessContent() {
+  const searchParams = useSearchParams();
 
   const orderNo =
-    params.get("order") || "-";
+    searchParams.get("order") ||
+    searchParams.get("basketId") ||
+    "-";
+
+  const paymentId =
+    searchParams.get("paymentId");
 
   return (
     <main
@@ -45,7 +51,11 @@ export default function OrderSuccessPage() {
           ✓
         </div>
 
-        <h1>
+        <h1
+          style={{
+            marginBottom: "10px",
+          }}
+        >
           Siparişiniz Alındı
         </h1>
 
@@ -55,8 +65,7 @@ export default function OrderSuccessPage() {
             lineHeight: 1.7,
           }}
         >
-          Siparişiniz başarıyla
-          oluşturuldu.
+          İşleminiz başarıyla tamamlandı.
         </p>
 
         <div
@@ -67,8 +76,12 @@ export default function OrderSuccessPage() {
             borderRadius: "9px",
           }}
         >
-          <small>
-            Sipariş Numaranız
+          <small
+            style={{
+              color: "#64748b",
+            }}
+          >
+            Sipariş / Sepet Numaranız
           </small>
 
           <strong
@@ -80,6 +93,18 @@ export default function OrderSuccessPage() {
           >
             {orderNo}
           </strong>
+
+          {paymentId ? (
+            <small
+              style={{
+                display: "block",
+                marginTop: "8px",
+                color: "#64748b",
+              }}
+            >
+              Ödeme ID: {paymentId}
+            </small>
+          ) : null}
         </div>
 
         <div
@@ -101,8 +126,7 @@ export default function OrderSuccessPage() {
             href="/urunler"
             style={{
               padding: "12px 16px",
-              border:
-                "1px solid #cbd5e1",
+              border: "1px solid #cbd5e1",
               borderRadius: "7px",
               color: "#0f172a",
               textDecoration: "none",
@@ -114,5 +138,28 @@ export default function OrderSuccessPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function Loading() {
+  return (
+    <main
+      className="container"
+      style={{
+        padding: "80px 20px",
+        minHeight: "60vh",
+        textAlign: "center",
+      }}
+    >
+      Sipariş bilgileri yükleniyor...
+    </main>
+  );
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <OrderSuccessContent />
+    </Suspense>
   );
 }
