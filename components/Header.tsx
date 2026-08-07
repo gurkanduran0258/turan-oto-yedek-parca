@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 
 import {
-  FormEvent,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -25,6 +25,15 @@ import type {
 
 import { useCart } from "./CartProvider";
 import { supabase } from "@/lib/supabase-client";
+
+type SearchProduct = {
+  id: number;
+  product_code: string;
+  product_name: string;
+  sale_price: number | string | null;
+  stock: number | null;
+  image_url: string | null;
+};
 
 export default function Header() {
   const { count } = useCart();
@@ -41,11 +50,20 @@ export default function Header() {
   const [searchQuery, setSearchQuery] =
     useState("");
 
+  const [products, setProducts] =
+    useState<SearchProduct[]>([]);
+
+  const [searchOpen, setSearchOpen] =
+    useState(false);
+
   const menuRef =
     useRef<HTMLDivElement | null>(null);
 
+  const searchRef =
+    useRef<HTMLDivElement | null>(null);
+
   /*
-   * KULLANICI OTURUMU
+   * KULLANICI
    */
   useEffect(() => {
     let mounted = true;
@@ -65,20 +83,19 @@ export default function Header() {
 
     const {
       data: { subscription },
-    } =
-      supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setUser(
-            session?.user ?? null
-          );
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(
+          session?.user ?? null
+        );
 
-          setLoadingUser(false);
+        setLoadingUser(false);
 
-          if (!session?.user) {
-            setMenuOpen(false);
-          }
+        if (!session?.user) {
+          setMenuOpen(false);
         }
-      );
+      }
+    );
 
     return () => {
       mounted = false;
@@ -87,19 +104,71 @@ export default function Header() {
   }, []);
 
   /*
-   * MENÜ DIŞINA TIKLANDIĞINDA KAPAT
+   * ARAMA İÇİN ÜRÜNLERİ ÇEK
+   */
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const response = await fetch(
+          "/api/products-list?page=1&pageSize=200",
+          {
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result =
+          await response.json();
+
+        if (
+          Array.isArray(
+            result.products
+          )
+        ) {
+          setProducts(
+            result.products
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Header ürün arama:",
+          error
+        );
+      }
+    }
+
+    void loadProducts();
+  }, []);
+
+  /*
+   * DIŞARI TIKLAYINCA MENÜLERİ KAPAT
    */
   useEffect(() => {
     function handleOutsideClick(
       event: MouseEvent
     ) {
+      const target =
+        event.target as Node;
+
       if (
         menuRef.current &&
         !menuRef.current.contains(
-          event.target as Node
+          target
         )
       ) {
         setMenuOpen(false);
+      }
+
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(
+          target
+        )
+      ) {
+        setSearchOpen(false);
       }
     }
 
@@ -117,10 +186,52 @@ export default function Header() {
   }, []);
 
   /*
-   * ÜST ARAMA
+   * CANLI ARAMA SONUÇLARI
    */
-  function handleSearch(
-    event: FormEvent<HTMLFormElement>
+  const searchResults =
+    useMemo(() => {
+      const query =
+        searchQuery
+          .trim()
+          .toLocaleLowerCase(
+            "tr-TR"
+          );
+
+      if (!query) {
+        return [];
+      }
+
+      return products
+        .filter((product) => {
+          const code =
+            String(
+              product.product_code ||
+                ""
+            ).toLocaleLowerCase(
+              "tr-TR"
+            );
+
+          const name =
+            String(
+              product.product_name ||
+                ""
+            ).toLocaleLowerCase(
+              "tr-TR"
+            );
+
+          return (
+            code.includes(query) ||
+            name.includes(query)
+          );
+        })
+        .slice(0, 6);
+    }, [
+      products,
+      searchQuery,
+    ]);
+
+  function handleSearchSubmit(
+    event: React.FormEvent
   ) {
     event.preventDefault();
 
@@ -128,21 +239,32 @@ export default function Header() {
       searchQuery.trim();
 
     if (!query) {
+      return;
+    }
+
+    /*
+     * TEK ÜRÜN BULUNDUYSA
+     * DİREKT ÜRÜNE GİT
+     */
+    if (
+      searchResults.length === 1
+    ) {
       window.location.href =
-        "/urunler";
+        `/urun/${searchResults[0].id}`;
 
       return;
     }
 
+    /*
+     * BİRDEN FAZLA SONUÇ VARSA
+     * ÜRÜNLER SAYFASINDA GÖSTER
+     */
     window.location.href =
       `/urunler?q=${encodeURIComponent(
         query
       )}`;
   }
 
-  /*
-   * ÇIKIŞ
-   */
   async function handleLogout() {
     await supabase.auth.signOut();
 
@@ -170,7 +292,6 @@ export default function Header() {
 
   return (
     <>
-      {/* ÜST BAR */}
       <div className="topbar">
         <div className="container topbarInner">
           <span>
@@ -183,19 +304,15 @@ export default function Header() {
 
           <span>
             Bayi / Kurumsal Giriş
-            &nbsp;
-            Sipariş Takip
-            &nbsp;
-            Yardım
+            &nbsp; Sipariş Takip
+            &nbsp; Yardım
           </span>
         </div>
       </div>
 
-      {/* HEADER */}
       <header className="header">
         <div className="container headerInner">
 
-          {/* LOGO */}
           <Link
             href="/"
             className="logo"
@@ -206,49 +323,233 @@ export default function Header() {
             />
           </Link>
 
-          {/* ARAMA */}
-          <form
-            className="search"
-            onSubmit={handleSearch}
+          {/* SADECE BU ARAMA GELİŞTİRİLDİ */}
+          <div
+            ref={searchRef}
+            style={{
+              position: "relative",
+              flex: 1,
+            }}
           >
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) =>
-                setSearchQuery(
-                  event.target.value
-                )
+            <form
+              className="search"
+              onSubmit={
+                handleSearchSubmit
               }
-              placeholder="OEM No, ürün adı veya şasi numarası ile arayın..."
-              autoComplete="off"
-            />
-
-            <button
-              type="submit"
-              aria-label="Ara"
             >
-              <Search size={22} />
-            </button>
-          </form>
+              <input
+                type="text"
+                value={searchQuery}
+                onFocus={() =>
+                  setSearchOpen(true)
+                }
+                onChange={(event) => {
+                  setSearchQuery(
+                    event.target.value
+                  );
 
-          {/* SAĞ MENÜ */}
+                  setSearchOpen(
+                    true
+                  );
+                }}
+                placeholder="OEM No, ürün adı veya şasi numarası ile arayın..."
+                autoComplete="off"
+              />
+
+              <button
+                type="submit"
+                aria-label="Ara"
+              >
+                <Search size={22} />
+              </button>
+            </form>
+
+            {/* CANLI ÜRÜN SONUÇLARI */}
+            {searchOpen &&
+            searchQuery.trim() ? (
+              <div
+                style={{
+                  position:
+                    "absolute",
+                  top: "calc(100% + 5px)",
+                  left: 0,
+                  right: 0,
+                  background:
+                    "#ffffff",
+                  border:
+                    "1px solid #e2e8f0",
+                  borderRadius:
+                    "8px",
+                  boxShadow:
+                    "0 12px 30px rgba(0,0,0,.14)",
+                  zIndex: 99999,
+                  overflow:
+                    "hidden",
+                  maxHeight:
+                    "420px",
+                  overflowY:
+                    "auto",
+                }}
+              >
+                {searchResults.length >
+                0 ? (
+                  searchResults.map(
+                    (product) => {
+                      const price =
+                        Number(
+                          product.sale_price ||
+                            0
+                        );
+
+                      const stock =
+                        Number(
+                          product.stock ||
+                            0
+                        );
+
+                      return (
+                        <Link
+                          key={
+                            product.id
+                          }
+                          href={`/urun/${product.id}`}
+                          onClick={() =>
+                            setSearchOpen(
+                              false
+                            )
+                          }
+                          style={{
+                            display:
+                              "grid",
+                            gridTemplateColumns:
+                              "60px minmax(0,1fr) auto",
+                            gap:
+                              "12px",
+                            alignItems:
+                              "center",
+                            padding:
+                              "10px 12px",
+                            textDecoration:
+                              "none",
+                            color:
+                              "#0f172a",
+                            borderBottom:
+                              "1px solid #f1f5f9",
+                          }}
+                        >
+                          <img
+                            src={
+                              product.image_url ||
+                              "/opar-filtre-banner.png"
+                            }
+                            alt={
+                              product.product_name
+                            }
+                            style={{
+                              width:
+                                "55px",
+                              height:
+                                "55px",
+                              objectFit:
+                                "contain",
+                            }}
+                          />
+
+                          <div>
+                            <strong
+                              style={{
+                                display:
+                                  "block",
+                                fontSize:
+                                  "14px",
+                              }}
+                            >
+                              {
+                                product.product_name
+                              }
+                            </strong>
+
+                            <small
+                              style={{
+                                display:
+                                  "block",
+                                marginTop:
+                                  "4px",
+                                color:
+                                  "#64748b",
+                              }}
+                            >
+                              OEM:{" "}
+                              {
+                                product.product_code
+                              }
+                            </small>
+
+                            <small
+                              style={{
+                                display:
+                                  "block",
+                                marginTop:
+                                  "3px",
+                                color:
+                                  stock >
+                                  0
+                                    ? "#15803d"
+                                    : "#b91c1c",
+                              }}
+                            >
+                              {stock >
+                              0
+                                ? `Stokta ${stock} adet`
+                                : "Stokta Yok"}
+                            </small>
+                          </div>
+
+                          <strong
+                            style={{
+                              whiteSpace:
+                                "nowrap",
+                            }}
+                          >
+                            {price.toLocaleString(
+                              "tr-TR",
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }
+                            )}{" "}
+                            TL
+                          </strong>
+                        </Link>
+                      );
+                    }
+                  )
+                ) : (
+                  <div
+                    style={{
+                      padding:
+                        "18px",
+                      color:
+                        "#64748b",
+                      textAlign:
+                        "center",
+                    }}
+                  >
+                    Ürün bulunamadı.
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
           <nav className="headerActions">
-
             <a href="tel:02122271217">
               <Phone size={18} />
               0212 227 12 17
             </a>
 
-            {/* KULLANICI */}
             {loadingUser ? (
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  opacity: 0.6,
-                }}
-              >
+              <span>
                 <User size={18} />
                 ...
               </span>
@@ -256,7 +557,8 @@ export default function Header() {
               <div
                 ref={menuRef}
                 style={{
-                  position: "relative",
+                  position:
+                    "relative",
                 }}
               >
                 <button
@@ -268,15 +570,21 @@ export default function Header() {
                     )
                   }
                   style={{
-                    display: "flex",
-                    alignItems: "center",
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
                     gap: "6px",
-                    border: "none",
+                    border:
+                      "none",
                     background:
                       "transparent",
-                    cursor: "pointer",
-                    font: "inherit",
-                    color: "inherit",
+                    cursor:
+                      "pointer",
+                    font:
+                      "inherit",
+                    color:
+                      "inherit",
                     padding: 0,
                   }}
                 >
@@ -286,14 +594,6 @@ export default function Header() {
 
                   <ChevronDown
                     size={14}
-                    style={{
-                      transform:
-                        menuOpen
-                          ? "rotate(180deg)"
-                          : "rotate(0deg)",
-                      transition:
-                        "transform 0.2s",
-                    }}
                   />
                 </button>
 
@@ -305,7 +605,7 @@ export default function Header() {
                       top: "34px",
                       right: 0,
                       minWidth:
-                        "220px",
+                        "210px",
                       background:
                         "#ffffff",
                       border:
@@ -313,8 +613,9 @@ export default function Header() {
                       borderRadius:
                         "10px",
                       boxShadow:
-                        "0 12px 35px rgba(0,0,0,0.14)",
-                      zIndex: 9999,
+                        "0 12px 35px rgba(0,0,0,.14)",
+                      zIndex:
+                        99999,
                       overflow:
                         "hidden",
                     }}
@@ -327,16 +628,7 @@ export default function Header() {
                           "1px solid #eef2f7",
                       }}
                     >
-                      <strong
-                        style={{
-                          display:
-                            "block",
-                          color:
-                            "#0f172a",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
+                      <strong>
                         {fullName ||
                           firstName}
                       </strong>
@@ -357,11 +649,6 @@ export default function Header() {
 
                     <Link
                       href="/hesabim"
-                      onClick={() =>
-                        setMenuOpen(
-                          false
-                        )
-                      }
                       style={
                         menuItemStyle
                       }
@@ -369,16 +656,11 @@ export default function Header() {
                       <User
                         size={16}
                       />
-                      Profilim
+                      Hesabım
                     </Link>
 
                     <Link
                       href="/hesabim/siparisler"
-                      onClick={() =>
-                        setMenuOpen(
-                          false
-                        )
-                      }
                       style={
                         menuItemStyle
                       }
@@ -391,11 +673,6 @@ export default function Header() {
 
                     <Link
                       href="/hesabim/adresler"
-                      onClick={() =>
-                        setMenuOpen(
-                          false
-                        )
-                      }
                       style={
                         menuItemStyle
                       }
@@ -413,10 +690,12 @@ export default function Header() {
                       }
                       style={{
                         ...menuItemStyle,
-                        width: "100%",
-                        border: "none",
+                        width:
+                          "100%",
+                        border:
+                          "none",
                         background:
-                          "#ffffff",
+                          "#fff",
                         cursor:
                           "pointer",
                         color:
@@ -438,24 +717,20 @@ export default function Header() {
               </Link>
             )}
 
-            {/* SEPET */}
             <Link href="/sepet">
               <ShoppingCart
                 size={18}
               />
-
               Sepet
-
               <b>{count}</b>
             </Link>
           </nav>
         </div>
       </header>
 
-      {/* KIRMIZI MENÜ */}
+      {/* ESKİ KIRMIZI MENÜ AYNI */}
       <nav className="mainNav">
         <div className="container navInner">
-
           <Link href="/urunler">
             ☰ TÜM KATEGORİLER
           </Link>
@@ -483,7 +758,6 @@ export default function Header() {
           <Link href="/sasi-sorgula">
             ŞASİ SORGULA
           </Link>
-
         </div>
       </nav>
     </>
