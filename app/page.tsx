@@ -1,11 +1,22 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import ProductCard from "@/components/ProductCard";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+type ApiProduct = {
+  id: number;
+  product_code: string;
+  product_name: string;
+  product_group: string | null;
+  purchase_price: number | string | null;
+  profit_margin: number | string | null;
+  vat: number | string | null;
+  sale_price: number | string | null;
+  stock: number | null;
+  image_url: string | null;
+};
 
-type CardProduct = {
+type Product = {
   id: number;
   name: string;
   brand: string;
@@ -19,258 +30,715 @@ type CardProduct = {
   badge: string;
 };
 
-type DatabaseProduct = {
-  id: number;
-  product_code: string;
-  product_name: string;
-  product_group: string | null;
-  purchase_price: number | string | null;
-  profit_margin: number | string | null;
-  vat: number | string | null;
-  sale_price: number | string | null;
-  stock: number | null;
-  image_url: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
-
-const cats = [
-  ["⚙️", "Motor"],
-  ["◉", "Fren Sistemi"],
-  ["💡", "Elektrik"],
-  ["🚘", "Kaporta"],
-  ["〽", "Süspansiyon"],
-  ["▥", "Filtreler"],
-  ["🧴", "Yağ"],
-  ["⚙", "Şanzıman"],
+const CATEGORIES = [
+  "Tümü",
+  "Motor",
+  "Fren",
+  "Elektrik",
+  "Kaporta",
+  "Süspansiyon",
+  "Filtre",
+  "Yağ",
+  "Şanzıman",
 ];
 
-async function getFeaturedProducts(): Promise<CardProduct[]> {
-  try {
-    const supabase = getSupabaseAdmin();
+function normalizeCategory(value: string | null | undefined) {
+  const text = (value || "").trim().toLocaleLowerCase("tr-TR");
 
-    const { data, error } = await supabase
-      .from("products")
-      .select(`
-        id,
-        product_code,
-        product_name,
-        product_group,
-        purchase_price,
-        profit_margin,
-        vat,
-        sale_price,
-        stock,
-        image_url,
-        created_at,
-        updated_at
-      `)
-      .order("updated_at", { ascending: false })
-      .limit(8);
+  if (!text) return "Diğer";
 
-    if (error) {
-      console.error("Ürünler alınamadı:", error.message);
-      return [];
-    }
-
-    return ((data || []) as DatabaseProduct[]).map((product) => {
-      const price = Number(product.sale_price || 0);
-
-      return {
-        id: product.id,
-        name: product.product_name || "Ürün",
-        brand: "OPAR",
-        category: product.product_group || "Diğer",
-        price,
-        oldPrice: price > 0 ? Math.round(price * 1.1) : 0,
-        oem: product.product_code || "-",
-        stock: Number(product.stock || 0),
-        vehicle: "Fiat",
-        image:
-          product.image_url ||
-          "/opar-filtre-banner.png",
-        badge:
-          Number(product.stock || 0) > 0
-            ? "Stokta"
-            : "Tükendi",
-      };
-    });
-  } catch (error) {
-    console.error("Ana sayfa ürün hatası:", error);
-    return [];
+  if (
+    text === "filtreler" ||
+    text.includes("filtre")
+  ) {
+    return "Filtre";
   }
-}
 
-export default async function Home() {
-  const products = await getFeaturedProducts();
+  if (
+    text === "fren sistemi" ||
+    text.includes("fren")
+  ) {
+    return "Fren";
+  }
+
+  if (text.includes("motor")) {
+    return "Motor";
+  }
+
+  if (text.includes("elektrik")) {
+    return "Elektrik";
+  }
+
+  if (text.includes("kaporta")) {
+    return "Kaporta";
+  }
+
+  if (
+    text.includes("süspansiyon") ||
+    text.includes("suspansiyon")
+  ) {
+    return "Süspansiyon";
+  }
+
+  if (text === "yağ" || text === "yag") {
+    return "Yağ";
+  }
+
+  if (
+    text.includes("şanzıman") ||
+    text.includes("sanziman")
+  ) {
+    return "Şanzıman";
+  }
 
   return (
-    <main className="container">
-      <section className="heroGrid">
-        <aside className="vehicleBox">
-          <h2>ARACINI SEÇ</h2>
-          <p>Aracına uygun parçaları görüntüle</p>
+    value?.trim() ||
+    "Diğer"
+  );
+}
 
-          <select defaultValue="Fiat">
-            <option>Fiat</option>
-          </select>
+function mapProduct(product: ApiProduct): Product {
+  const price = Number(
+    product.sale_price || 0
+  );
 
-          <select defaultValue="">
-            <option value="">Model Seçin</option>
-            <option>Egea</option>
-            <option>Doblo</option>
-            <option>Fiorino</option>
-            <option>Linea</option>
-          </select>
+  const stock = Number(
+    product.stock || 0
+  );
 
-          <select defaultValue="">
-            <option value="">Yıl Seçin</option>
-            <option>2024</option>
-            <option>2023</option>
-            <option>2022</option>
-          </select>
+  return {
+    id: Number(product.id),
 
-          <select defaultValue="">
-            <option value="">Motor Seçin</option>
-            <option>1.3 Multijet</option>
-            <option>1.4 Fire</option>
-          </select>
+    name:
+      product.product_name ||
+      "Ürün",
 
-          <Link href="/urunler" className="primary">
-            PARÇALARI LİSTELE
-          </Link>
-        </aside>
+    brand: "OPAR",
 
-        <div className="heroImage heroCampaign">
-          <div className="heroCopy">
-            <span>TURAN OTO GÜVENCESİYLE</span>
+    category:
+      normalizeCategory(
+        product.product_group
+      ),
 
-            <h1>
-              ORİJİNAL FIAT
-              <br />
-              <b>YEDEK PARÇA</b>
-            </h1>
+    price,
 
-            <p>
-              Opar filtre kitleri, bakım ürünleri ve mekanik parçalar
-            </p>
+    oldPrice:
+      price > 0
+        ? Number(
+            (
+              price * 1.1
+            ).toFixed(2)
+          )
+        : 0,
 
-            <Link href="/urunler" className="heroButton">
-              ALIŞVERİŞE BAŞLA
-            </Link>
-          </div>
+    oem:
+      product.product_code ||
+      "",
 
-          <div className="heroVisual">
-            <img
-              src="/opar-filtre-banner.png"
-              alt="Opar filtre bakım seti"
-            />
-          </div>
+    stock,
+
+    vehicle: "",
+
+    image:
+      product.image_url ||
+      "/opar-filtre-banner.png",
+
+    badge:
+      stock > 0
+        ? "Stokta"
+        : "Tükendi",
+  };
+}
+
+export default function ProductsPage() {
+  const [products, setProducts] =
+    useState<Product[]>([]);
+
+  const [query, setQuery] =
+    useState("");
+
+  const [category, setCategory] =
+    useState("Tümü");
+
+  const [sort, setSort] =
+    useState("featured");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  /*
+   * URL'DEKİ:
+   *
+   * /urunler?q=71751128E
+   * /urunler?category=Filtre
+   *
+   * DEĞERLERİNİ OKUR.
+   */
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const urlQuery =
+      params.get("q");
+
+    const urlCategory =
+      params.get("category");
+
+    if (urlQuery) {
+      setQuery(
+        urlQuery.trim()
+      );
+    }
+
+    if (urlCategory) {
+      setCategory(
+        normalizeCategory(
+          urlCategory
+        )
+      );
+    }
+  }, []);
+
+  /*
+   * GERÇEK ÜRÜNLERİ API'DEN ÇEK
+   */
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response =
+          await fetch(
+            "/api/products-list?page=1&pageSize=200",
+            {
+              cache: "no-store",
+            }
+          );
+
+        const text =
+          await response.text();
+
+        if (!response.ok) {
+          throw new Error(
+            text ||
+              `Ürünler alınamadı. HTTP ${response.status}`
+          );
+        }
+
+        let result: {
+          products?: ApiProduct[];
+          error?: string;
+        };
+
+        try {
+          result =
+            JSON.parse(text);
+        } catch {
+          throw new Error(
+            "Sunucu geçersiz ürün verisi döndürdü."
+          );
+        }
+
+        if (result.error) {
+          throw new Error(
+            result.error
+          );
+        }
+
+        const apiProducts =
+          Array.isArray(
+            result.products
+          )
+            ? result.products
+            : [];
+
+        setProducts(
+          apiProducts.map(
+            mapProduct
+          )
+        );
+      } catch (requestError) {
+        console.error(
+          requestError
+        );
+
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Ürünler yüklenemedi."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadProducts();
+  }, []);
+
+  /*
+   * ARAMA + KATEGORİ + SIRALAMA
+   */
+  const filteredProducts =
+    useMemo(() => {
+      const search =
+        query
+          .trim()
+          .toLocaleLowerCase(
+            "tr-TR"
+          );
+
+      let output =
+        products.filter(
+          (product) => {
+            const productCategory =
+              normalizeCategory(
+                product.category
+              );
+
+            const categoryMatch =
+              category === "Tümü" ||
+              productCategory ===
+                category;
+
+            if (!categoryMatch) {
+              return false;
+            }
+
+            if (!search) {
+              return true;
+            }
+
+            const name =
+              product.name
+                .toLocaleLowerCase(
+                  "tr-TR"
+                );
+
+            const oem =
+              product.oem
+                .toLocaleLowerCase(
+                  "tr-TR"
+                );
+
+            const brand =
+              product.brand
+                .toLocaleLowerCase(
+                  "tr-TR"
+                );
+
+            const group =
+              productCategory
+                .toLocaleLowerCase(
+                  "tr-TR"
+                );
+
+            return (
+              name.includes(
+                search
+              ) ||
+              oem.includes(
+                search
+              ) ||
+              brand.includes(
+                search
+              ) ||
+              group.includes(
+                search
+              )
+            );
+          }
+        );
+
+      if (
+        sort === "asc"
+      ) {
+        output = [
+          ...output,
+        ].sort(
+          (a, b) =>
+            a.price -
+            b.price
+        );
+      }
+
+      if (
+        sort === "desc"
+      ) {
+        output = [
+          ...output,
+        ].sort(
+          (a, b) =>
+            b.price -
+            a.price
+        );
+      }
+
+      if (
+        sort === "name"
+      ) {
+        output = [
+          ...output,
+        ].sort(
+          (a, b) =>
+            a.name.localeCompare(
+              b.name,
+              "tr"
+            )
+        );
+      }
+
+      return output;
+    }, [
+      products,
+      query,
+      category,
+      sort,
+    ]);
+
+  function selectCategory(
+    value: string
+  ) {
+    setCategory(value);
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      value === "Tümü"
+    ) {
+      params.delete(
+        "category"
+      );
+    } else {
+      params.set(
+        "category",
+        value
+      );
+    }
+
+    const nextUrl =
+      params.toString()
+        ? `/urunler?${params.toString()}`
+        : "/urunler";
+
+    window.history.replaceState(
+      {},
+      "",
+      nextUrl
+    );
+  }
+
+  function handleSearch(
+    value: string
+  ) {
+    setQuery(value);
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      value.trim()
+    ) {
+      params.set(
+        "q",
+        value
+      );
+    } else {
+      params.delete("q");
+    }
+
+    const nextUrl =
+      params.toString()
+        ? `/urunler?${params.toString()}`
+        : "/urunler";
+
+    window.history.replaceState(
+      {},
+      "",
+      nextUrl
+    );
+  }
+
+  return (
+    <>
+      <section className="pageTitle">
+        <div className="container">
+          <small>
+            Ana Sayfa / Ürünler
+          </small>
+
+          <h1>
+            Fiat Yedek Parçaları
+          </h1>
         </div>
+      </section>
 
-        <aside className="trustBox">
-          <div>
-            🚚 <b>Aynı Gün Kargo</b>
-            <small>16:00&apos;a kadar</small>
-          </div>
+      <main
+        className="container listingLayout"
+      >
+        {/* SOL FİLTRE */}
+        <aside className="filterPanel">
+          <h3>
+            Kategori
+          </h3>
 
-          <div>
-            🛡️ <b>%100 Orijinal</b>
-            <small>Kalite garantisi</small>
-          </div>
+          {CATEGORIES.map(
+            (item) => (
+              <label
+                key={item}
+                style={{
+                  cursor:
+                    "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="category"
+                  checked={
+                    category ===
+                    item
+                  }
+                  onChange={() =>
+                    selectCategory(
+                      item
+                    )
+                  }
+                />
 
-          <div>
-            🏷️ <b>Uygun Fiyat</b>
-            <small>Doğru parça</small>
-          </div>
-
-          <div>
-            🎧 <b>7/24 Destek</b>
-            <small>Uzman yardım</small>
-          </div>
+                {" "}
+                {item}
+              </label>
+            )
+          )}
         </aside>
-      </section>
 
-      <section className="categoryStrip">
-        {cats.map(([icon, name]) => (
-          <Link
-            href={`/urunler?kategori=${encodeURIComponent(name)}`}
-            key={name}
-          >
-            <span>{icon}</span>
-            <b>{name}</b>
-          </Link>
-        ))}
-      </section>
+        {/* ÜRÜNLER */}
+        <section>
+          <div className="toolbar">
+            <input
+              value={query}
+              onChange={(
+                event
+              ) =>
+                handleSearch(
+                  event.target
+                    .value
+                )
+              }
+              placeholder="Ürün adı veya OEM kodu ara..."
+            />
 
-      <div className="sectionHead">
-        <h2>ÖNE ÇIKAN ÜRÜNLER</h2>
-
-        <Link href="/urunler">
-          Tümünü Gör ›
-        </Link>
-      </div>
-
-      <section className="productsLayout">
-        <aside className="sideCats">
-          <h3>KATEGORİLER</h3>
-
-          {cats.map(([, name]) => (
-            <Link
-              href={`/urunler?kategori=${encodeURIComponent(name)}`}
-              key={name}
+            <select
+              value={sort}
+              onChange={(
+                event
+              ) =>
+                setSort(
+                  event.target
+                    .value
+                )
+              }
             >
-              {name}
-              <span>›</span>
-            </Link>
-          ))}
-        </aside>
+              <option value="featured">
+                Önerilen
+              </option>
 
-        <div className="productGrid">
-          {products.length > 0 ? (
-            products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-              />
-            ))
-          ) : (
+              <option value="asc">
+                Fiyat Artan
+              </option>
+
+              <option value="desc">
+                Fiyat Azalan
+              </option>
+
+              <option value="name">
+                Ürün Adı A-Z
+              </option>
+            </select>
+          </div>
+
+          {/* SONUÇ BİLGİSİ */}
+          {!loading &&
+          !error ? (
             <div
               style={{
-                width: "100%",
-                padding: "40px",
-                textAlign: "center",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
+                display:
+                  "flex",
+                justifyContent:
+                  "space-between",
+                alignItems:
+                  "center",
+                gap: "10px",
+                margin:
+                  "14px 0",
+                color:
+                  "#64748b",
+                fontSize:
+                  "14px",
               }}
             >
-              Henüz ürün bulunmuyor.
+              <span>
+                {
+                  filteredProducts.length
+                }{" "}
+                ürün bulundu
+              </span>
+
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleSearch(
+                      ""
+                    )
+                  }
+                  style={{
+                    border:
+                      "none",
+                    background:
+                      "transparent",
+                    color:
+                      "#c90020",
+                    fontWeight:
+                      700,
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  Aramayı Temizle
+                </button>
+              ) : null}
             </div>
-          )}
-        </div>
-      </section>
+          ) : null}
 
-      <section className="stats">
-        <div>
-          <b>20+</b>
-          <span>Yıllık Tecrübe</span>
-        </div>
+          {/* HATA */}
+          {error ? (
+            <div
+              style={{
+                padding:
+                  "14px",
+                margin:
+                  "15px 0",
+                borderRadius:
+                  "8px",
+                background:
+                  "#fee2e2",
+                color:
+                  "#991b1b",
+                fontWeight:
+                  700,
+              }}
+            >
+              {error}
+            </div>
+          ) : null}
 
-        <div>
-          <b>50.000+</b>
-          <span>Ürün Çeşidi</span>
-        </div>
+          {/* YÜKLENİYOR */}
+          {loading ? (
+            <div
+              style={{
+                padding:
+                  "40px",
+                textAlign:
+                  "center",
+                color:
+                  "#64748b",
+              }}
+            >
+              Ürünler
+              yükleniyor...
+            </div>
+          ) : null}
 
-        <div>
-          <b>100.000+</b>
-          <span>Mutlu Müşteri</span>
-        </div>
+          {/* ÜRÜN LİSTESİ */}
+          {!loading &&
+          !error &&
+          filteredProducts.length >
+            0 ? (
+            <div className="productGrid">
+              {filteredProducts.map(
+                (product) => (
+                  <ProductCard
+                    key={
+                      product.id
+                    }
+                    product={
+                      product
+                    }
+                  />
+                )
+              )}
+            </div>
+          ) : null}
 
-        <div>
-          <b>256 Bit</b>
-          <span>Güvenli Alışveriş</span>
-        </div>
-      </section>
-    </main>
+          {/* SONUÇ YOK */}
+          {!loading &&
+          !error &&
+          filteredProducts.length ===
+            0 ? (
+            <div
+              style={{
+                padding:
+                  "50px 20px",
+                marginTop:
+                  "15px",
+                textAlign:
+                  "center",
+                background:
+                  "#f8fafc",
+                border:
+                  "1px solid #e2e8f0",
+                borderRadius:
+                  "10px",
+              }}
+            >
+              <h3>
+                Ürün bulunamadı
+              </h3>
+
+              <p
+                style={{
+                  color:
+                    "#64748b",
+                }}
+              >
+                Aradığınız ürün adı
+                veya OEM kodunu
+                kontrol edin.
+              </p>
+
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  setQuery("");
+                  setCategory(
+                    "Tümü"
+                  );
+
+                  window.history.replaceState(
+                    {},
+                    "",
+                    "/urunler"
+                  );
+                }}
+              >
+                TÜM ÜRÜNLERİ GÖSTER
+              </button>
+            </div>
+          ) : null}
+        </section>
+      </main>
+    </>
   );
 }
