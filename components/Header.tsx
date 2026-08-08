@@ -303,7 +303,6 @@ export default function Header() {
           </span>
 
           <span>
-            Bayi / Kurumsal Giriş
             &nbsp; Sipariş Takip
             &nbsp; Yardım
           </span>
