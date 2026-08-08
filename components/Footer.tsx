@@ -87,8 +87,6 @@ export default function Footer() {
 
           <FooterLink href="/hakkimizda">Hakkımızda</FooterLink>
           <FooterLink href="/iletisim">İletişim</FooterLink>
-          <FooterLink href="/kariyer">Kariyer</FooterLink>
-          <FooterLink href="/bayilik">Bayilik</FooterLink>
         </div>
 
         {/* MÜŞTERİ */}
