@@ -1,3 +1,4 @@
+import "./admin-table.css";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -5,10 +6,13 @@ import {
   ShoppingCart,
   Boxes,
   FileSpreadsheet,
-  Search,
   Users,
   Truck,
+  ReceiptText,
+  Building2,
+  History,
   Settings,
+  ExternalLink,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -20,8 +24,7 @@ export default function AdminLayout({
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg,#f8fafc 0%,#eef2f7 100%)",
+        background: "#f6f8fb",
         color: "#0f172a",
       }}
     >
@@ -34,10 +37,10 @@ export default function AdminLayout({
       >
         <aside
           style={{
-            background: "#0b1220",
+            background: "linear-gradient(180deg,#0b1220 0%,#111827 100%)",
             color: "#fff",
             padding: "24px 18px",
-            borderRight: "1px solid #172033",
+            borderRight: "1px solid #1e293b",
           }}
         >
           <Link
@@ -53,9 +56,9 @@ export default function AdminLayout({
           >
             <div
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
+                width: 44,
+                height: 44,
+                borderRadius: 13,
                 background: "#c90020",
                 display: "grid",
                 placeItems: "center",
@@ -66,114 +69,87 @@ export default function AdminLayout({
             </div>
 
             <div>
-              <strong
-                style={{
-                  display: "block",
-                  fontSize: 16,
-                }}
-              >
+              <strong style={{ display: "block" }}>
                 Turan Oto
               </strong>
-
-              <small
-                style={{
-                  color: "#94a3b8",
-                }}
-              >
-                Yönetim Paneli
+              <small style={{ color: "#94a3b8" }}>
+                Premium Yönetim
               </small>
             </div>
           </Link>
 
-          <nav style={{ display: "grid", gap: 8 }}>
-            <AdminNavLink
-              href="/admin"
-              icon={<LayoutDashboard size={18} />}
-            >
+          <nav style={{ display: "grid", gap: 7 }}>
+            <Nav href="/admin" icon={<LayoutDashboard size={18} />}>
               Genel Bakış
-            </AdminNavLink>
+            </Nav>
 
-            <AdminNavLink
-              href="/admin/urunler"
-              icon={<Package size={18} />}
-            >
+            <Nav href="/admin/urunler" icon={<Package size={18} />}>
               Ürün Yönetimi
-            </AdminNavLink>
+            </Nav>
 
-            <AdminNavLink
-              href="/admin/siparisler"
-              icon={<ShoppingCart size={18} />}
-            >
-              Sipariş Takibi
-            </AdminNavLink>
-
-            <AdminNavLink
-              href="/admin/stok"
-              icon={<Boxes size={18} />}
-            >
-              Stok Takibi
-            </AdminNavLink>
-
-            <AdminNavLink
-              href="/admin/excel-yukle"
-              icon={<FileSpreadsheet size={18} />}
-            >
+            <Nav href="/admin/excel-yukle" icon={<FileSpreadsheet size={18} />}>
               Excel Yükleme
-            </AdminNavLink>
+            </Nav>
 
-            <AdminNavLink
-              href="/sasi-sorgula"
-              icon={<Search size={18} />}
-            >
-              Şase Sorgula
-            </AdminNavLink>
+            <Nav href="/admin/siparisler" icon={<ShoppingCart size={18} />}>
+              Sipariş Takibi
+            </Nav>
 
-            <AdminNavLink
-              href="/admin/musteriler"
-              icon={<Users size={18} />}
-            >
+            <Nav href="/admin/stok" icon={<Boxes size={18} />}>
+              Stok Takibi
+            </Nav>
+
+            <Nav href="/admin/stok-hareketleri" icon={<History size={18} />}>
+              Stok Hareketleri
+            </Nav>
+
+            <Nav href="/admin/maliyet" icon={<ReceiptText size={18} />}>
+              İrsaliye & Maliyet
+            </Nav>
+
+            <Nav href="/admin/tedarikciler" icon={<Building2 size={18} />}>
+              Tedarikçiler
+            </Nav>
+
+            <Nav href="/admin/musteriler" icon={<Users size={18} />}>
               Müşteriler
-            </AdminNavLink>
+            </Nav>
 
-            <AdminNavLink
-              href="/admin/kargo"
-              icon={<Truck size={18} />}
-            >
+            <Nav href="/admin/kargo" icon={<Truck size={18} />}>
               Kargo Yönetimi
-            </AdminNavLink>
+            </Nav>
 
-            <AdminNavLink
-              href="/admin/ayarlar"
-              icon={<Settings size={18} />}
-            >
+            <Nav href="/admin/ayarlar" icon={<Settings size={18} />}>
               Ayarlar
-            </AdminNavLink>
+            </Nav>
           </nav>
 
-          <div
+          <Link
+            href="/"
             style={{
-              marginTop: 28,
-              padding: 14,
-              border: "1px solid #1e293b",
-              borderRadius: 12,
-              background: "#111827",
-              color: "#94a3b8",
-              fontSize: 12,
-              lineHeight: 1.6,
+              marginTop: 26,
+              display: "flex",
+              gap: 9,
+              alignItems: "center",
+              color: "#cbd5e1",
+              textDecoration: "none",
+              padding: "11px 12px",
+              border: "1px solid #243044",
+              borderRadius: 10,
             }}
           >
-            Ürün, sipariş ve stok akışlarını tek
-            ekrandan yönetin.
-          </div>
+            <ExternalLink size={17} />
+            Siteyi Gör
+          </Link>
         </aside>
 
-        <main>{children}</main>
+        <div>{children}</div>
       </div>
     </div>
   );
 }
 
-function AdminNavLink({
+function Nav({
   href,
   icon,
   children,
@@ -187,13 +163,12 @@ function AdminNavLink({
       href={href}
       style={{
         display: "flex",
-        alignItems: "center",
         gap: 10,
+        alignItems: "center",
         padding: "11px 12px",
         borderRadius: 9,
-        textDecoration: "none",
         color: "#dbe4ef",
-        background: "transparent",
+        textDecoration: "none",
         fontWeight: 700,
         fontSize: 14,
       }}
