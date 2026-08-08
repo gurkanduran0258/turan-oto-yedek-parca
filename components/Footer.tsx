@@ -60,13 +60,13 @@ export default function Footer() {
             }}
           >
             <a
-              href="tel:+908503026666"
+              href="tel:+902122271217"
               style={{
                 color: "inherit",
                 textDecoration: "none",
               }}
             >
-              ☎ 0850 302 66 66
+              ☎ 0212 227 12 17
             </a>
 
             <a
@@ -124,7 +124,6 @@ export default function Footer() {
           >
             <span>💳 Kredi Kartı</span>
             <span>🏦 Havale / EFT</span>
-            <span>🧾 B2B Cari Hesap</span>
           </div>
 
           <div
