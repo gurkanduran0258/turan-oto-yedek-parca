@@ -30,11 +30,11 @@ export default function EgeaEPC(){
   const el=mount.current;
   const scene=new THREE.Scene(); scene.background=new THREE.Color(0xf7f7f7);
   const camera=new THREE.PerspectiveCamera(34,el.clientWidth/el.clientHeight,.05,100);
-  camera.position.set(7,3.6,7);
+  camera.position.set(6.2,2.9,6.8);
   const renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(el.clientWidth,el.clientHeight);
   renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.shadowMap.enabled=true; el.appendChild(renderer.domElement);
-  const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.enablePan=false; controls.target.set(0,.8,0);
+  const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.enablePan=false; controls.minDistance=4.2; controls.maxDistance=12; controls.target.set(0,1.05,0);
   scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2.4));
   const dl=new THREE.DirectionalLight(0xffffff,4); dl.position.set(5,8,6); scene.add(dl);
   const grid=new THREE.GridHelper(12,24,0xd5d5d5,0xe7e7e7); scene.add(grid);
@@ -133,11 +133,66 @@ export default function EgeaEPC(){
       states.push({mesh:o,pos:o.position.clone(),material:o.material,visible:o.visible});
       if(partForMesh(o.name))selectable.push(o);
     });
-    const box=new THREE.Box3().setFromObject(root),size=box.getSize(new THREE.Vector3());
-    const sc=6.2/Math.max(size.x,size.y,size.z); root.scale.setScalar(sc);
-    const b2=new THREE.Box3().setFromObject(root),c=b2.getCenter(new THREE.Vector3());
-    root.position.set(-c.x,-b2.min.y,-c.z);
-    applyGroup("dis-govde"); setLoaded(true);
+    // Ölçeği tüm GLB'ye göre değil, sadece Egea dış gövdesine göre hesapla.
+    // Mekanik meshlerin bazıları model sınırlarını çok büyüttüğü için araç küçücük görünüyordu.
+    const bodyBox=new THREE.Box3();
+    let bodyFound=false;
+
+    root.updateMatrixWorld(true);
+
+    root.traverse(o=>{
+      if(!(o instanceof THREE.Mesh))return;
+      if(!isBodyMesh(o.name) && !isWheelMesh(o.name))return;
+
+      const meshBox=new THREE.Box3().setFromObject(o);
+      if(meshBox.isEmpty())return;
+
+      bodyBox.union(meshBox);
+      bodyFound=true;
+    });
+
+    const fitBox=bodyFound ? bodyBox : new THREE.Box3().setFromObject(root);
+    const fitSize=fitBox.getSize(new THREE.Vector3());
+
+    // Egea ekranda büyük görünsün.
+    const TARGET_MODEL_SIZE=8.4;
+    const sc=TARGET_MODEL_SIZE/Math.max(fitSize.x,fitSize.y,fitSize.z);
+    root.scale.setScalar(sc);
+    root.updateMatrixWorld(true);
+
+    // Yine sadece gövdeye bakarak ortala ve zemine oturt.
+    const scaledBodyBox=new THREE.Box3();
+    let scaledBodyFound=false;
+
+    root.traverse(o=>{
+      if(!(o instanceof THREE.Mesh))return;
+      if(!isBodyMesh(o.name) && !isWheelMesh(o.name))return;
+
+      const meshBox=new THREE.Box3().setFromObject(o);
+      if(meshBox.isEmpty())return;
+
+      scaledBodyBox.union(meshBox);
+      scaledBodyFound=true;
+    });
+
+    const finalBox=scaledBodyFound
+      ? scaledBodyBox
+      : new THREE.Box3().setFromObject(root);
+
+    const center=finalBox.getCenter(new THREE.Vector3());
+
+    root.position.x-=center.x;
+    root.position.z-=center.z;
+    root.position.y-=finalBox.min.y;
+    root.updateMatrixWorld(true);
+
+    // Kamerayı araca yaklaştır.
+    controls.target.set(0,1.15,0);
+    camera.position.set(6.4,3.0,7.0);
+    controls.update();
+
+    applyGroup("dis-govde");
+    setLoaded(true);
   });
 
   const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
