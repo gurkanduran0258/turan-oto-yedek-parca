@@ -18,7 +18,9 @@ export default async function WorkOrdersPage({
 
   const q = String(params.q || "").trim();
   const durum = String(params.durum || "TUMU").trim();
-  const sirala = String(params.sirala || "yeni").trim();
+
+  // DEFAULT = EN YENİ İŞ EMRİ
+  const sirala = String(params.sirala || "ikk-yeni").trim();
 
   const supabase = getSupabaseAdmin();
 
@@ -29,8 +31,10 @@ export default async function WorkOrdersPage({
       service_work_order_parts(*),
       service_work_order_labor(*)
     `)
-    .order("updated_at", { ascending: false })
-    .limit(500);
+    .order("work_order_no", {
+      ascending: false,
+    })
+    .limit(1000);
 
   if (error) {
     return (
@@ -52,7 +56,9 @@ export default async function WorkOrdersPage({
     );
   }
 
-  const allOrders = Array.isArray(orders) ? orders : [];
+  const allOrders = Array.isArray(orders)
+    ? orders
+    : [];
 
   const counts = {
     TUMU: allOrders.length,
@@ -80,69 +86,114 @@ export default async function WorkOrdersPage({
 
   let filteredOrders = [...allOrders];
 
+  // ============================================
   // DURUM FİLTRESİ
+  // ============================================
+
   if (durum !== "TUMU") {
-    filteredOrders = filteredOrders.filter((wo: any) => {
-      const status = getStatus(wo);
+    filteredOrders = filteredOrders.filter(
+      (wo: any) => {
+        const status = getStatus(wo);
 
-      if (durum === "ATOLYE") {
-        return status === "ATÖLYE";
+        if (durum === "ATOLYE") {
+          return status === "ATÖLYE";
+        }
+
+        if (durum === "IPTAL") {
+          return status === "İPTAL";
+        }
+
+        return status === durum;
       }
-
-      if (durum === "IPTAL") {
-        return status === "İPTAL";
-      }
-
-      return status === durum;
-    });
+    );
   }
 
+  // ============================================
   // ARAMA
+  // ============================================
+
   if (q) {
     const needle = normalize(q);
 
-    filteredOrders = filteredOrders.filter((wo: any) => {
-      const searchable = [
-        wo.work_order_no,
-        wo.plate,
-        wo.vin,
-        wo.customer_name,
-        wo.customer_code,
-        wo.customer_phone,
-        wo.vehicle_description,
-        wo.advisor_name,
-        wo.model_year,
-      ]
-        .map((x) => normalize(x))
-        .join(" ");
+    filteredOrders = filteredOrders.filter(
+      (wo: any) => {
+        const searchable = [
+          wo.work_order_no,
+          wo.plate,
+          wo.vin,
+          wo.customer_name,
+          wo.customer_code,
+          wo.customer_phone,
+          wo.vehicle_description,
+          wo.advisor_name,
+          wo.model_year,
+        ]
+          .map((x) => normalize(x))
+          .join(" ");
 
-      return searchable.includes(needle);
-    });
+        return searchable.includes(needle);
+      }
+    );
   }
 
+  // ============================================
   // SIRALAMA
+  // ============================================
+
   filteredOrders.sort((a: any, b: any) => {
-    if (sirala === "eski") {
-      return dateValue(a.updated_at) - dateValue(b.updated_at);
-    }
-
-    if (sirala === "tutar-yuksek") {
-      return safeNumber(b.grand_total) - safeNumber(a.grand_total);
-    }
-
-    if (sirala === "tutar-dusuk") {
-      return safeNumber(a.grand_total) - safeNumber(b.grand_total);
-    }
-
+    // EN YENİ İŞ EMRİ
     if (sirala === "ikk-yeni") {
-      return String(b.work_order_no || "").localeCompare(
-        String(a.work_order_no || ""),
-        "tr"
+      return compareWorkOrderDesc(
+        a.work_order_no,
+        b.work_order_no
       );
     }
 
-    // DEFAULT: EN YENİ ÜSTTE
-    return dateValue(b.updated_at) - dateValue(a.updated_at);
+    // EN ESKİ İŞ EMRİ
+    if (sirala === "ikk-eski") {
+      return compareWorkOrderAsc(
+        a.work_order_no,
+        b.work_order_no
+      );
+    }
+
+    // EN YENİ SENKRON
+    if (sirala === "yeni") {
+      return (
+        dateValue(b.updated_at) -
+        dateValue(a.updated_at)
+      );
+    }
+
+    // EN ESKİ SENKRON
+    if (sirala === "eski") {
+      return (
+        dateValue(a.updated_at) -
+        dateValue(b.updated_at)
+      );
+    }
+
+    // TUTAR YÜKSEK
+    if (sirala === "tutar-yuksek") {
+      return (
+        safeNumber(b.grand_total) -
+        safeNumber(a.grand_total)
+      );
+    }
+
+    // TUTAR DÜŞÜK
+    if (sirala === "tutar-dusuk") {
+      return (
+        safeNumber(a.grand_total) -
+        safeNumber(b.grand_total)
+      );
+    }
+
+    // DEFAULT
+    return compareWorkOrderDesc(
+      a.work_order_no,
+      b.work_order_no
+    );
   });
 
   return (
@@ -153,6 +204,10 @@ export default async function WorkOrdersPage({
         background: "#f6f8fb",
       }}
     >
+      {/* ========================================
+          BAŞLIK
+      ======================================== */}
+
       <div
         style={{
           color: "#c90020",
@@ -178,15 +233,19 @@ export default async function WorkOrdersPage({
           marginTop: 5,
         }}
       >
-        TOFAŞ&apos;tan okunan araç, müşteri, yedek parça ve işçilik
-        bilgileri.
+        TOFAŞ&apos;tan okunan araç, müşteri,
+        yedek parça ve işçilik bilgileri.
       </p>
 
-      {/* DURUM KARTLARI */}
+      {/* ========================================
+          DURUM KARTLARI
+      ======================================== */}
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(6, minmax(120px, 1fr))",
+          gridTemplateColumns:
+            "repeat(6, minmax(120px, 1fr))",
           gap: 10,
           marginTop: 20,
         }}
@@ -263,13 +322,16 @@ export default async function WorkOrdersPage({
         />
       </div>
 
-      {/* ARAMA + FİLTRE */}
+      {/* ========================================
+          ARAMA / FİLTRE
+      ======================================== */}
+
       <form
         method="get"
         style={{
           display: "grid",
           gridTemplateColumns:
-            "minmax(250px,1fr) 190px 210px 110px",
+            "minmax(250px,1fr) 190px 230px 110px",
           gap: 10,
           marginTop: 16,
           background: "#fff",
@@ -291,18 +353,45 @@ export default async function WorkOrdersPage({
           defaultValue={durum}
           style={inputStyle}
         >
-          <option value="TUMU">Tüm Durumlar</option>
-          <option value="FATURA">Fatura</option>
-          <option value="ATOLYE">Atölye</option>
-          <option value="BEKLEMEDE">Beklemede</option>
-          <option value="TASLAK">Taslak</option>
-          <option value="KK">KK</option>
-          <option value="KK2">KK2</option>
+          <option value="TUMU">
+            Tüm Durumlar
+          </option>
+
+          <option value="FATURA">
+            Fatura
+          </option>
+
+          <option value="ATOLYE">
+            Atölye
+          </option>
+
+          <option value="BEKLEMEDE">
+            Beklemede
+          </option>
+
+          <option value="TASLAK">
+            Taslak
+          </option>
+
+          <option value="KK">
+            KK
+          </option>
+
+          <option value="KK2">
+            KK2
+          </option>
+
           <option value="KK2 BEKLEMEDE">
             KK2 Beklemede
           </option>
-          <option value="FATURASIZ">Faturasız</option>
-          <option value="IPTAL">İptal</option>
+
+          <option value="FATURASIZ">
+            Faturasız
+          </option>
+
+          <option value="IPTAL">
+            İptal
+          </option>
         </select>
 
         <select
@@ -310,16 +399,20 @@ export default async function WorkOrdersPage({
           defaultValue={sirala}
           style={inputStyle}
         >
+          <option value="ikk-yeni">
+            En Yeni İş Emri
+          </option>
+
+          <option value="ikk-eski">
+            En Eski İş Emri
+          </option>
+
           <option value="yeni">
-            En Yeni Güncellenen
+            En Yeni Senkron
           </option>
 
           <option value="eski">
-            En Eski Güncellenen
-          </option>
-
-          <option value="ikk-yeni">
-            En Yeni İş Emri No
+            En Eski Senkron
           </option>
 
           <option value="tutar-yuksek">
@@ -354,40 +447,70 @@ export default async function WorkOrdersPage({
           fontSize: 13,
         }}
       >
-        <b>{filteredOrders.length}</b> iş emri gösteriliyor.
+        <b>{filteredOrders.length}</b> iş emri
+        gösteriliyor.
       </div>
 
-      {/* KOLON BAŞLIKLARI */}
+      {/* ========================================
+          TABLO BAŞLIĞI
+      ======================================== */}
+
       <div
         style={{
           display: "grid",
+
           gridTemplateColumns:
-            "170px 115px 150px minmax(130px, 1fr) 145px 150px",
+            "165px 115px 145px 110px minmax(190px,1fr) 135px 145px",
+
           gap: 12,
           alignItems: "center",
+
           marginTop: 12,
+
           padding: "11px 16px",
+
           background: "#e9eef5",
+
           border: "1px solid #d5deea",
+
           borderRadius: 10,
+
           fontSize: 12,
+
           fontWeight: 950,
+
           color: "#334155",
+
           textTransform: "uppercase",
+
           letterSpacing: 0.3,
         }}
       >
         <span>İş Emri</span>
+
         <span>Plaka</span>
+
         <span>Şase</span>
+
         <span>Model</span>
+
+        <span>Müşteri</span>
+
         <span>Durum</span>
-        <span style={{ textAlign: "right" }}>
+
+        <span
+          style={{
+            textAlign: "right",
+          }}
+        >
           Toplam
         </span>
       </div>
 
-      {/* İŞ EMİRLERİ */}
+      {/* ========================================
+          İŞ EMİRLERİ
+      ======================================== */}
+
       <div
         style={{
           display: "grid",
@@ -415,45 +538,74 @@ export default async function WorkOrdersPage({
               key={wo.id}
               style={{
                 background: "#fff",
-                border: "1px solid #dbe3ee",
+
+                border:
+                  "1px solid #dbe3ee",
+
                 borderRadius: 12,
+
                 overflow: "hidden",
               }}
             >
+              {/* =================================
+                  KAPALI KART
+              ================================= */}
+
               <summary
                 style={{
                   cursor: "pointer",
+
                   display: "grid",
+
                   gridTemplateColumns:
-                    "170px 115px 150px minmax(130px,1fr) 145px 150px",
+                    "165px 115px 145px 110px minmax(190px,1fr) 135px 145px",
+
                   gap: 12,
+
                   alignItems: "center",
+
                   padding: "14px 16px",
+
                   listStyle: "none",
                 }}
               >
                 {/* İŞ EMRİ */}
+
                 <b>
-                  {safeText(wo.work_order_no)}
+                  {safeText(
+                    wo.work_order_no
+                  )}
                 </b>
 
                 {/* PLAKA */}
+
                 <b>
-                  {safeText(wo.plate)}
+                  {safeText(
+                    wo.plate
+                  )}
                 </b>
 
                 {/* ŞASE */}
+
                 <span>
-                  {safeText(wo.vin)}
+                  {safeText(
+                    wo.vin
+                  )}
                 </span>
 
                 {/* MODEL */}
+
                 <span
                   style={{
-                    fontWeight: 800,
+                    fontWeight: 850,
+
                     overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+
+                    textOverflow:
+                      "ellipsis",
+
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   {safeText(
@@ -462,25 +614,62 @@ export default async function WorkOrdersPage({
                   )}
                 </span>
 
+                {/* MÜŞTERİ */}
+
+                <span
+                  title={
+                    wo.customer_name ||
+                    ""
+                  }
+                  style={{
+                    fontWeight: 750,
+
+                    overflow: "hidden",
+
+                    textOverflow:
+                      "ellipsis",
+
+                    whiteSpace:
+                      "nowrap",
+
+                    color: "#334155",
+                  }}
+                >
+                  {safeText(
+                    wo.customer_name
+                  )}
+                </span>
+
                 {/* DURUM */}
+
                 <StatusBadge
                   status={status}
                 />
 
                 {/* TOPLAM */}
+
                 <b
                   style={{
                     textAlign: "right",
+
                     fontSize: 15,
                   }}
                 >
-                  {money(wo.grand_total)}
+                  {money(
+                    wo.grand_total
+                  )}
                 </b>
               </summary>
 
+              {/* =================================
+                  AÇILAN DETAY
+              ================================= */}
+
               <div
                 style={{
-                  padding: "0 16px 18px",
+                  padding:
+                    "0 16px 18px",
+
                   borderTop:
                     "1px solid #f1f5f9",
                 }}
@@ -488,12 +677,17 @@ export default async function WorkOrdersPage({
                 <div
                   style={{
                     display: "grid",
+
                     gridTemplateColumns:
                       "repeat(3, minmax(0,1fr))",
+
                     gap: 12,
+
                     marginTop: 14,
                   }}
                 >
+                  {/* ARAÇ */}
+
                   <Box title="Araç">
                     <Line
                       k="Plaka"
@@ -522,7 +716,9 @@ export default async function WorkOrdersPage({
 
                     <Line
                       k="Araç"
-                      v={wo.vehicle_description}
+                      v={
+                        wo.vehicle_description
+                      }
                     />
 
                     <Line
@@ -536,30 +732,42 @@ export default async function WorkOrdersPage({
                     />
                   </Box>
 
+                  {/* MÜŞTERİ */}
+
                   <Box title="Müşteri / Servis">
                     <Line
                       k="Müşteri"
-                      v={wo.customer_name}
+                      v={
+                        wo.customer_name
+                      }
                     />
 
                     <Line
                       k="Müşteri Kodu"
-                      v={wo.customer_code}
+                      v={
+                        wo.customer_code
+                      }
                     />
 
                     <Line
                       k="Telefon"
-                      v={wo.customer_phone}
+                      v={
+                        wo.customer_phone
+                      }
                     />
 
                     <Line
                       k="Danışman"
-                      v={wo.advisor_name}
+                      v={
+                        wo.advisor_name
+                      }
                     />
 
                     <Line
                       k="Teslim Eden"
-                      v={wo.delivery_person}
+                      v={
+                        wo.delivery_person
+                      }
                     />
 
                     <Line
@@ -582,6 +790,8 @@ export default async function WorkOrdersPage({
                       }
                     />
                   </Box>
+
+                  {/* TUTAR */}
 
                   <Box title="Tutarlar">
                     <Line
@@ -628,25 +838,37 @@ export default async function WorkOrdersPage({
                   </Box>
                 </div>
 
+                {/* MÜŞTERİ İSTEĞİ */}
+
                 {wo.customer_request ? (
                   <div
                     style={{
                       marginTop: 12,
-                      background: "#fff7ed",
+
+                      background:
+                        "#fff7ed",
+
                       border:
                         "1px solid #fed7aa",
+
                       borderRadius: 9,
+
                       padding: 11,
                     }}
                   >
-                    <b>Müşteri İsteği:</b>{" "}
+                    <b>
+                      Müşteri İsteği:
+                    </b>{" "}
                     {safeText(
                       wo.customer_request
                     )}
                   </div>
                 ) : null}
 
-                {/* YEDEK PARÇALAR */}
+                {/* =================================
+                    YEDEK PARÇALAR
+                ================================= */}
+
                 <h3
                   style={{
                     marginTop: 20,
@@ -660,19 +882,43 @@ export default async function WorkOrdersPage({
                     overflowX: "auto",
                   }}
                 >
-                  <table style={table}>
+                  <table
+                    style={table}
+                  >
                     <thead>
                       <tr>
-                        <Th>İş Satırı</Th>
-                        <Th>OEM</Th>
-                        <Th>Parça</Th>
-                        <Th>Adet</Th>
+                        <Th>
+                          İş Satırı
+                        </Th>
+
+                        <Th>
+                          OEM
+                        </Th>
+
+                        <Th>
+                          Parça
+                        </Th>
+
+                        <Th>
+                          Adet
+                        </Th>
+
                         <Th>
                           KDV Hariç Birim
                         </Th>
-                        <Th>İsk.</Th>
-                        <Th>KDV</Th>
-                        <Th>KDV Tutarı</Th>
+
+                        <Th>
+                          İsk.
+                        </Th>
+
+                        <Th>
+                          KDV
+                        </Th>
+
+                        <Th>
+                          KDV Tutarı
+                        </Th>
+
                         <Th>
                           KDV Dahil Toplam
                         </Th>
@@ -749,7 +995,9 @@ export default async function WorkOrdersPage({
 
                       {!parts.length && (
                         <tr>
-                          <Td colSpan={9}>
+                          <Td
+                            colSpan={9}
+                          >
                             <span
                               style={{
                                 color:
@@ -766,7 +1014,10 @@ export default async function WorkOrdersPage({
                   </table>
                 </div>
 
-                {/* İŞÇİLİKLER */}
+                {/* =================================
+                    İŞÇİLİKLER
+                ================================= */}
+
                 <h3
                   style={{
                     marginTop: 20,
@@ -780,19 +1031,43 @@ export default async function WorkOrdersPage({
                     overflowX: "auto",
                   }}
                 >
-                  <table style={table}>
+                  <table
+                    style={table}
+                  >
                     <thead>
                       <tr>
-                        <Th>İş Satırı</Th>
-                        <Th>Kod</Th>
-                        <Th>İşçilik</Th>
-                        <Th>Saat / Adet</Th>
+                        <Th>
+                          İş Satırı
+                        </Th>
+
+                        <Th>
+                          Kod
+                        </Th>
+
+                        <Th>
+                          İşçilik
+                        </Th>
+
+                        <Th>
+                          Saat / Adet
+                        </Th>
+
                         <Th>
                           KDV Hariç Birim
                         </Th>
-                        <Th>İsk.</Th>
-                        <Th>KDV</Th>
-                        <Th>KDV Tutarı</Th>
+
+                        <Th>
+                          İsk.
+                        </Th>
+
+                        <Th>
+                          KDV
+                        </Th>
+
+                        <Th>
+                          KDV Tutarı
+                        </Th>
+
                         <Th>
                           KDV Dahil Toplam
                         </Th>
@@ -869,7 +1144,9 @@ export default async function WorkOrdersPage({
 
                       {!labor.length && (
                         <tr>
-                          <Td colSpan={9}>
+                          <Td
+                            colSpan={9}
+                          >
                             <span
                               style={{
                                 color:
@@ -894,11 +1171,16 @@ export default async function WorkOrdersPage({
           <div
             style={{
               background: "#fff",
+
               border:
                 "1px solid #e2e8f0",
+
               padding: 40,
+
               borderRadius: 12,
+
               textAlign: "center",
+
               color: "#64748b",
             }}
           >
@@ -912,7 +1194,7 @@ export default async function WorkOrdersPage({
 }
 
 /* =========================================================
-   COMPONENTS
+   SAYAC KARTLARI
 ========================================================= */
 
 function CountCard({
@@ -933,13 +1215,19 @@ function CountCard({
       href={href}
       style={{
         textDecoration: "none",
+
         color: "#0f172a",
+
         background: "#fff",
+
         border: active
           ? `2px solid ${color}`
           : "1px solid #e2e8f0",
+
         borderRadius: 12,
+
         padding: "13px 14px",
+
         boxShadow: active
           ? `0 0 0 2px ${color}15`
           : "none",
@@ -948,7 +1236,9 @@ function CountCard({
       <div
         style={{
           fontSize: 12,
+
           color: "#64748b",
+
           fontWeight: 800,
         }}
       >
@@ -958,8 +1248,11 @@ function CountCard({
       <div
         style={{
           marginTop: 3,
+
           fontSize: 24,
+
           fontWeight: 950,
+
           color,
         }}
       >
@@ -968,6 +1261,10 @@ function CountCard({
     </a>
   );
 }
+
+/* =========================================================
+   DURUM BADGE
+========================================================= */
 
 function StatusBadge({
   status,
@@ -986,21 +1283,38 @@ function StatusBadge({
     <span
       style={{
         display: "inline-flex",
+
         justifyContent: "center",
+
         alignItems: "center",
+
         width: "fit-content",
-        minWidth: small ? 80 : 105,
+
+        minWidth:
+          small ? 80 : 105,
+
         padding: small
           ? "4px 8px"
           : "6px 12px",
+
         borderRadius: 999,
+
         background:
           style.background,
-        color: style.color,
-        border: `1px solid ${style.border}`,
-        fontSize: small ? 10 : 11,
+
+        color:
+          style.color,
+
+        border:
+          `1px solid ${style.border}`,
+
+        fontSize:
+          small ? 10 : 11,
+
         fontWeight: 950,
+
         letterSpacing: 0.25,
+
         whiteSpace: "nowrap",
       }}
     >
@@ -1008,6 +1322,10 @@ function StatusBadge({
     </span>
   );
 }
+
+/* =========================================================
+   BOX
+========================================================= */
 
 function Box({
   title,
@@ -1020,7 +1338,9 @@ function Box({
     <div
       style={{
         background: "#f8fafc",
+
         borderRadius: 10,
+
         padding: 12,
       }}
     >
@@ -1037,6 +1357,10 @@ function Box({
   );
 }
 
+/* =========================================================
+   LINE
+========================================================= */
+
 function Line({
   k,
   v,
@@ -1048,17 +1372,23 @@ function Line({
     <div
       style={{
         display: "flex",
+
         justifyContent:
           "space-between",
+
         alignItems: "center",
+
         gap: 15,
+
         padding: "4px 0",
+
         fontSize: 13,
       }}
     >
       <span
         style={{
           color: "#64748b",
+
           flexShrink: 0,
         }}
       >
@@ -1068,6 +1398,7 @@ function Line({
       <div
         style={{
           textAlign: "right",
+
           fontWeight: 700,
         }}
       >
@@ -1079,6 +1410,10 @@ function Line({
   );
 }
 
+/* =========================================================
+   TABLE
+========================================================= */
+
 function Th({
   children,
 }: {
@@ -1088,10 +1423,14 @@ function Th({
     <th
       style={{
         textAlign: "left",
+
         padding: 8,
+
         background: "#f8fafc",
+
         borderBottom:
           "1px solid #e2e8f0",
+
         whiteSpace: "nowrap",
       }}
     >
@@ -1112,8 +1451,10 @@ function Td({
       colSpan={colSpan}
       style={{
         padding: 8,
+
         borderBottom:
           "1px solid #f1f5f9",
+
         verticalAlign: "top",
       }}
     >
@@ -1128,25 +1469,36 @@ function Td({
 
 const table: React.CSSProperties = {
   width: "100%",
+
   borderCollapse: "collapse",
+
   fontSize: 13,
+
   minWidth: 950,
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
+
   boxSizing: "border-box",
+
   border: "1px solid #cbd5e1",
+
   borderRadius: 9,
+
   padding: "10px 12px",
+
   background: "#fff",
+
   color: "#0f172a",
+
   outline: "none",
+
   fontSize: 14,
 };
 
 /* =========================================================
-   HELPERS
+   STATUS
 ========================================================= */
 
 function getStatus(wo: any) {
@@ -1247,6 +1599,10 @@ function statusStyle(
   };
 }
 
+/* =========================================================
+   SAFE VALUES
+========================================================= */
+
 function safeText(v: any) {
   if (
     v === null ||
@@ -1292,6 +1648,10 @@ function safePercent(v: any) {
   });
 }
 
+/* =========================================================
+   MONEY
+========================================================= */
+
 function money(v: any) {
   return (
     safeNumber(v).toLocaleString(
@@ -1304,12 +1664,17 @@ function money(v: any) {
   );
 }
 
+/* =========================================================
+   DATE
+========================================================= */
+
 function formatDate(v: any) {
   if (!v) {
     return "-";
   }
 
-  const d = new Date(v);
+  const d =
+    new Date(v);
 
   if (
     Number.isNaN(
@@ -1337,6 +1702,76 @@ function dateValue(v: any) {
     : n;
 }
 
+/* =========================================================
+   WORK ORDER SIRALAMA
+========================================================= */
+
+function compareWorkOrderDesc(
+  a: any,
+  b: any
+) {
+  const A =
+    BigInt(
+      String(a || "0").replace(
+        /\D/g,
+        ""
+      ) || "0"
+    );
+
+  const B =
+    BigInt(
+      String(b || "0").replace(
+        /\D/g,
+        ""
+      ) || "0"
+    );
+
+  if (A > B) {
+    return -1;
+  }
+
+  if (A < B) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function compareWorkOrderAsc(
+  a: any,
+  b: any
+) {
+  const A =
+    BigInt(
+      String(a || "0").replace(
+        /\D/g,
+        ""
+      ) || "0"
+    );
+
+  const B =
+    BigInt(
+      String(b || "0").replace(
+        /\D/g,
+        ""
+      ) || "0"
+    );
+
+  if (A > B) {
+    return 1;
+  }
+
+  if (A < B) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/* =========================================================
+   SEARCH NORMALIZE
+========================================================= */
+
 function normalize(v: any) {
   return String(v || "")
     .trim()
@@ -1344,6 +1779,10 @@ function normalize(v: any) {
       "tr-TR"
     );
 }
+
+/* =========================================================
+   REACT VALUE
+========================================================= */
 
 function isPrimitive(
   v: React.ReactNode
@@ -1355,6 +1794,10 @@ function isPrimitive(
     v === undefined
   );
 }
+
+/* =========================================================
+   URL
+========================================================= */
 
 function makeUrl({
   q,
@@ -1369,7 +1812,10 @@ function makeUrl({
     new URLSearchParams();
 
   if (q) {
-    params.set("q", q);
+    params.set(
+      "q",
+      q
+    );
   }
 
   if (
@@ -1384,7 +1830,7 @@ function makeUrl({
 
   if (
     sirala &&
-    sirala !== "yeni"
+    sirala !== "ikk-yeni"
   ) {
     params.set(
       "sirala",
