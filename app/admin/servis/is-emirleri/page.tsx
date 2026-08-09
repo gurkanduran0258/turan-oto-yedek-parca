@@ -18,8 +18,6 @@ export default async function WorkOrdersPage({
 
   const q = String(params.q || "").trim();
   const durum = String(params.durum || "TUMU").trim();
-
-  // DEFAULT = EN YENİ İŞ EMRİ
   const sirala = String(params.sirala || "ikk-yeni").trim();
 
   const supabase = getSupabaseAdmin();
@@ -34,7 +32,7 @@ export default async function WorkOrdersPage({
     .order("work_order_no", {
       ascending: false,
     })
-    .limit(1000);
+    .limit(1500);
 
   if (error) {
     return (
@@ -56,9 +54,7 @@ export default async function WorkOrdersPage({
     );
   }
 
-  const allOrders = Array.isArray(orders)
-    ? orders
-    : [];
+  const allOrders = Array.isArray(orders) ? orders : [];
 
   const counts = {
     TUMU: allOrders.length,
@@ -86,62 +82,58 @@ export default async function WorkOrdersPage({
 
   let filteredOrders = [...allOrders];
 
-  // ============================================
+  // =====================================================
   // DURUM FİLTRESİ
-  // ============================================
+  // =====================================================
 
   if (durum !== "TUMU") {
-    filteredOrders = filteredOrders.filter(
-      (wo: any) => {
-        const status = getStatus(wo);
+    filteredOrders = filteredOrders.filter((wo: any) => {
+      const status = getStatus(wo);
 
-        if (durum === "ATOLYE") {
-          return status === "ATÖLYE";
-        }
-
-        if (durum === "IPTAL") {
-          return status === "İPTAL";
-        }
-
-        return status === durum;
+      if (durum === "ATOLYE") {
+        return status === "ATÖLYE";
       }
-    );
+
+      if (durum === "IPTAL") {
+        return status === "İPTAL";
+      }
+
+      return status === durum;
+    });
   }
 
-  // ============================================
+  // =====================================================
   // ARAMA
-  // ============================================
+  // =====================================================
 
   if (q) {
     const needle = normalize(q);
 
-    filteredOrders = filteredOrders.filter(
-      (wo: any) => {
-        const searchable = [
-          wo.work_order_no,
-          wo.plate,
-          wo.vin,
-          wo.customer_name,
-          wo.customer_code,
-          wo.customer_phone,
-          wo.vehicle_description,
-          wo.advisor_name,
-          wo.model_year,
-        ]
-          .map((x) => normalize(x))
-          .join(" ");
+    filteredOrders = filteredOrders.filter((wo: any) => {
+      const searchable = [
+        wo.work_order_no,
+        wo.plate,
+        wo.vin,
+        wo.customer_name,
+        wo.customer_code,
+        wo.customer_phone,
+        wo.vehicle_description,
+        wo.model_year,
+        wo.advisor_name,
+        getStatus(wo),
+      ]
+        .map((x) => normalize(x))
+        .join(" ");
 
-        return searchable.includes(needle);
-      }
-    );
+      return searchable.includes(needle);
+    });
   }
 
-  // ============================================
+  // =====================================================
   // SIRALAMA
-  // ============================================
+  // =====================================================
 
   filteredOrders.sort((a: any, b: any) => {
-    // EN YENİ İŞ EMRİ
     if (sirala === "ikk-yeni") {
       return compareWorkOrderDesc(
         a.work_order_no,
@@ -149,7 +141,6 @@ export default async function WorkOrdersPage({
       );
     }
 
-    // EN ESKİ İŞ EMRİ
     if (sirala === "ikk-eski") {
       return compareWorkOrderAsc(
         a.work_order_no,
@@ -157,7 +148,6 @@ export default async function WorkOrdersPage({
       );
     }
 
-    // EN YENİ SENKRON
     if (sirala === "yeni") {
       return (
         dateValue(b.updated_at) -
@@ -165,7 +155,6 @@ export default async function WorkOrdersPage({
       );
     }
 
-    // EN ESKİ SENKRON
     if (sirala === "eski") {
       return (
         dateValue(a.updated_at) -
@@ -173,7 +162,6 @@ export default async function WorkOrdersPage({
       );
     }
 
-    // TUTAR YÜKSEK
     if (sirala === "tutar-yuksek") {
       return (
         safeNumber(b.grand_total) -
@@ -181,7 +169,6 @@ export default async function WorkOrdersPage({
       );
     }
 
-    // TUTAR DÜŞÜK
     if (sirala === "tutar-dusuk") {
       return (
         safeNumber(a.grand_total) -
@@ -189,7 +176,6 @@ export default async function WorkOrdersPage({
       );
     }
 
-    // DEFAULT
     return compareWorkOrderDesc(
       a.work_order_no,
       b.work_order_no
@@ -204,10 +190,6 @@ export default async function WorkOrdersPage({
         background: "#f6f8fb",
       }}
     >
-      {/* ========================================
-          BAŞLIK
-      ======================================== */}
-
       <div
         style={{
           color: "#c90020",
@@ -237,9 +219,9 @@ export default async function WorkOrdersPage({
         yedek parça ve işçilik bilgileri.
       </p>
 
-      {/* ========================================
-          DURUM KARTLARI
-      ======================================== */}
+      {/* =================================================
+          SAYAC KARTLARI
+      ================================================= */}
 
       <div
         style={{
@@ -322,9 +304,9 @@ export default async function WorkOrdersPage({
         />
       </div>
 
-      {/* ========================================
-          ARAMA / FİLTRE
-      ======================================== */}
+      {/* =================================================
+          ARAMA + FİLTRE
+      ================================================= */}
 
       <form
         method="get"
@@ -451,51 +433,34 @@ export default async function WorkOrdersPage({
         gösteriliyor.
       </div>
 
-      {/* ========================================
-          TABLO BAŞLIĞI
-      ======================================== */}
+      {/* =================================================
+          TABLO BAŞLIK
+      ================================================= */}
 
       <div
         style={{
           display: "grid",
-
           gridTemplateColumns:
             "165px 115px 145px 110px minmax(190px,1fr) 135px 145px",
-
           gap: 12,
           alignItems: "center",
-
           marginTop: 12,
-
           padding: "11px 16px",
-
           background: "#e9eef5",
-
           border: "1px solid #d5deea",
-
           borderRadius: 10,
-
           fontSize: 12,
-
           fontWeight: 950,
-
           color: "#334155",
-
           textTransform: "uppercase",
-
           letterSpacing: 0.3,
         }}
       >
         <span>İş Emri</span>
-
         <span>Plaka</span>
-
         <span>Şase</span>
-
         <span>Model</span>
-
         <span>Müşteri</span>
-
         <span>Durum</span>
 
         <span
@@ -507,9 +472,9 @@ export default async function WorkOrdersPage({
         </span>
       </div>
 
-      {/* ========================================
-          İŞ EMİRLERİ
-      ======================================== */}
+      {/* =================================================
+          KARTLAR
+      ================================================= */}
 
       <div
         style={{
@@ -538,46 +503,28 @@ export default async function WorkOrdersPage({
               key={wo.id}
               style={{
                 background: "#fff",
-
-                border:
-                  "1px solid #dbe3ee",
-
+                border: "1px solid #dbe3ee",
                 borderRadius: 12,
-
                 overflow: "hidden",
               }}
             >
-              {/* =================================
-                  KAPALI KART
-              ================================= */}
-
               <summary
                 style={{
                   cursor: "pointer",
-
                   display: "grid",
-
                   gridTemplateColumns:
                     "165px 115px 145px 110px minmax(190px,1fr) 135px 145px",
-
                   gap: 12,
-
                   alignItems: "center",
-
                   padding: "14px 16px",
-
                   listStyle: "none",
                 }}
               >
-                {/* İŞ EMRİ */}
-
                 <b>
                   {safeText(
                     wo.work_order_no
                   )}
                 </b>
-
-                {/* PLAKA */}
 
                 <b>
                   {safeText(
@@ -585,27 +532,18 @@ export default async function WorkOrdersPage({
                   )}
                 </b>
 
-                {/* ŞASE */}
-
                 <span>
                   {safeText(
                     wo.vin
                   )}
                 </span>
 
-                {/* MODEL */}
-
                 <span
                   style={{
                     fontWeight: 850,
-
                     overflow: "hidden",
-
-                    textOverflow:
-                      "ellipsis",
-
-                    whiteSpace:
-                      "nowrap",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {safeText(
@@ -614,8 +552,6 @@ export default async function WorkOrdersPage({
                   )}
                 </span>
 
-                {/* MÜŞTERİ */}
-
                 <span
                   title={
                     wo.customer_name ||
@@ -623,15 +559,9 @@ export default async function WorkOrdersPage({
                   }
                   style={{
                     fontWeight: 750,
-
                     overflow: "hidden",
-
-                    textOverflow:
-                      "ellipsis",
-
-                    whiteSpace:
-                      "nowrap",
-
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                     color: "#334155",
                   }}
                 >
@@ -640,18 +570,13 @@ export default async function WorkOrdersPage({
                   )}
                 </span>
 
-                {/* DURUM */}
-
                 <StatusBadge
                   status={status}
                 />
 
-                {/* TOPLAM */}
-
                 <b
                   style={{
                     textAlign: "right",
-
                     fontSize: 15,
                   }}
                 >
@@ -661,15 +586,9 @@ export default async function WorkOrdersPage({
                 </b>
               </summary>
 
-              {/* =================================
-                  AÇILAN DETAY
-              ================================= */}
-
               <div
                 style={{
-                  padding:
-                    "0 16px 18px",
-
+                  padding: "0 16px 18px",
                   borderTop:
                     "1px solid #f1f5f9",
                 }}
@@ -677,17 +596,12 @@ export default async function WorkOrdersPage({
                 <div
                   style={{
                     display: "grid",
-
                     gridTemplateColumns:
                       "repeat(3, minmax(0,1fr))",
-
                     gap: 12,
-
                     marginTop: 14,
                   }}
                 >
-                  {/* ARAÇ */}
-
                   <Box title="Araç">
                     <Line
                       k="Plaka"
@@ -732,8 +646,6 @@ export default async function WorkOrdersPage({
                     />
                   </Box>
 
-                  {/* MÜŞTERİ */}
-
                   <Box title="Müşteri / Servis">
                     <Line
                       k="Müşteri"
@@ -772,12 +684,16 @@ export default async function WorkOrdersPage({
 
                     <Line
                       k="İKK Türü"
-                      v={wo.ikk_type}
+                      v={
+                        wo.ikk_type
+                      }
                     />
 
                     <Line
                       k="İKK Sınıfı"
-                      v={wo.ikk_class}
+                      v={
+                        wo.ikk_class
+                      }
                     />
 
                     <Line
@@ -789,9 +705,21 @@ export default async function WorkOrdersPage({
                         />
                       }
                     />
-                  </Box>
 
-                  {/* TUTAR */}
+                    <Line
+                      k="DB status"
+                      v={
+                        wo.status
+                      }
+                    />
+
+                    <Line
+                      k="DB acceptance"
+                      v={
+                        wo.acceptance_status
+                      }
+                    />
+                  </Box>
 
                   <Box title="Tutarlar">
                     <Line
@@ -838,21 +766,14 @@ export default async function WorkOrdersPage({
                   </Box>
                 </div>
 
-                {/* MÜŞTERİ İSTEĞİ */}
-
                 {wo.customer_request ? (
                   <div
                     style={{
                       marginTop: 12,
-
-                      background:
-                        "#fff7ed",
-
+                      background: "#fff7ed",
                       border:
                         "1px solid #fed7aa",
-
                       borderRadius: 9,
-
                       padding: 11,
                     }}
                   >
@@ -864,10 +785,6 @@ export default async function WorkOrdersPage({
                     )}
                   </div>
                 ) : null}
-
-                {/* =================================
-                    YEDEK PARÇALAR
-                ================================= */}
 
                 <h3
                   style={{
@@ -892,7 +809,7 @@ export default async function WorkOrdersPage({
                         </Th>
 
                         <Th>
-                          OEM
+                          Parça Kodu
                         </Th>
 
                         <Th>
@@ -995,9 +912,7 @@ export default async function WorkOrdersPage({
 
                       {!parts.length && (
                         <tr>
-                          <Td
-                            colSpan={9}
-                          >
+                          <Td colSpan={9}>
                             <span
                               style={{
                                 color:
@@ -1013,10 +928,6 @@ export default async function WorkOrdersPage({
                     </tbody>
                   </table>
                 </div>
-
-                {/* =================================
-                    İŞÇİLİKLER
-                ================================= */}
 
                 <h3
                   style={{
@@ -1144,9 +1055,7 @@ export default async function WorkOrdersPage({
 
                       {!labor.length && (
                         <tr>
-                          <Td
-                            colSpan={9}
-                          >
+                          <Td colSpan={9}>
                             <span
                               style={{
                                 color:
@@ -1171,16 +1080,11 @@ export default async function WorkOrdersPage({
           <div
             style={{
               background: "#fff",
-
               border:
                 "1px solid #e2e8f0",
-
               padding: 40,
-
               borderRadius: 12,
-
               textAlign: "center",
-
               color: "#64748b",
             }}
           >
@@ -1194,7 +1098,7 @@ export default async function WorkOrdersPage({
 }
 
 /* =========================================================
-   SAYAC KARTLARI
+   COUNT CARD
 ========================================================= */
 
 function CountCard({
@@ -1215,9 +1119,7 @@ function CountCard({
       href={href}
       style={{
         textDecoration: "none",
-
         color: "#0f172a",
-
         background: "#fff",
 
         border: active
@@ -1225,7 +1127,6 @@ function CountCard({
           : "1px solid #e2e8f0",
 
         borderRadius: 12,
-
         padding: "13px 14px",
 
         boxShadow: active
@@ -1236,9 +1137,7 @@ function CountCard({
       <div
         style={{
           fontSize: 12,
-
           color: "#64748b",
-
           fontWeight: 800,
         }}
       >
@@ -1248,11 +1147,8 @@ function CountCard({
       <div
         style={{
           marginTop: 3,
-
           fontSize: 24,
-
           fontWeight: 950,
-
           color,
         }}
       >
@@ -1263,8 +1159,42 @@ function CountCard({
 }
 
 /* =========================================================
-   DURUM BADGE
+   DURUM
 ========================================================= */
+
+function getStatus(wo: any) {
+  // ÇOK ÖNEMLİ:
+  // önce status alanı.
+  // acceptance_status sadece fallback.
+  const raw =
+    wo.status ||
+    wo.acceptance_status ||
+    "BİLİNMİYOR";
+
+  return normalizeStatus(
+    raw
+  );
+}
+
+function normalizeStatus(v: any) {
+  const value = String(
+    v || "BİLİNMİYOR"
+  )
+    .trim()
+    .toLocaleUpperCase(
+      "tr-TR"
+    );
+
+  if (value === "ATOLYE") {
+    return "ATÖLYE";
+  }
+
+  if (value === "IPTAL") {
+    return "İPTAL";
+  }
+
+  return value;
+}
 
 function StatusBadge({
   status,
@@ -1274,18 +1204,20 @@ function StatusBadge({
   small?: boolean;
 }) {
   const value =
-    normalizeStatus(status);
+    normalizeStatus(
+      status
+    );
 
   const style =
-    statusStyle(value);
+    statusStyle(
+      value
+    );
 
   return (
     <span
       style={{
         display: "inline-flex",
-
         justifyContent: "center",
-
         alignItems: "center",
 
         width: "fit-content",
@@ -1321,210 +1253,6 @@ function StatusBadge({
       {value}
     </span>
   );
-}
-
-/* =========================================================
-   BOX
-========================================================= */
-
-function Box({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        background: "#f8fafc",
-
-        borderRadius: 10,
-
-        padding: 12,
-      }}
-    >
-      <b>{title}</b>
-
-      <div
-        style={{
-          marginTop: 8,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   LINE
-========================================================= */
-
-function Line({
-  k,
-  v,
-}: {
-  k: string;
-  v: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-
-        justifyContent:
-          "space-between",
-
-        alignItems: "center",
-
-        gap: 15,
-
-        padding: "4px 0",
-
-        fontSize: 13,
-      }}
-    >
-      <span
-        style={{
-          color: "#64748b",
-
-          flexShrink: 0,
-        }}
-      >
-        {k}
-      </span>
-
-      <div
-        style={{
-          textAlign: "right",
-
-          fontWeight: 700,
-        }}
-      >
-        {isPrimitive(v)
-          ? safeText(v)
-          : v}
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   TABLE
-========================================================= */
-
-function Th({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <th
-      style={{
-        textAlign: "left",
-
-        padding: 8,
-
-        background: "#f8fafc",
-
-        borderBottom:
-          "1px solid #e2e8f0",
-
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({
-  children,
-  colSpan,
-}: {
-  children: React.ReactNode;
-  colSpan?: number;
-}) {
-  return (
-    <td
-      colSpan={colSpan}
-      style={{
-        padding: 8,
-
-        borderBottom:
-          "1px solid #f1f5f9",
-
-        verticalAlign: "top",
-      }}
-    >
-      {children}
-    </td>
-  );
-}
-
-/* =========================================================
-   STYLES
-========================================================= */
-
-const table: React.CSSProperties = {
-  width: "100%",
-
-  borderCollapse: "collapse",
-
-  fontSize: 13,
-
-  minWidth: 950,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-
-  boxSizing: "border-box",
-
-  border: "1px solid #cbd5e1",
-
-  borderRadius: 9,
-
-  padding: "10px 12px",
-
-  background: "#fff",
-
-  color: "#0f172a",
-
-  outline: "none",
-
-  fontSize: 14,
-};
-
-/* =========================================================
-   STATUS
-========================================================= */
-
-function getStatus(wo: any) {
-  return normalizeStatus(
-    wo.acceptance_status ||
-      wo.status ||
-      "BİLİNMİYOR"
-  );
-}
-
-function normalizeStatus(v: any) {
-  const value = String(
-    v || "BİLİNMİYOR"
-  )
-    .trim()
-    .toLocaleUpperCase("tr-TR");
-
-  if (value === "ATOLYE") {
-    return "ATÖLYE";
-  }
-
-  if (value === "IPTAL") {
-    return "İPTAL";
-  }
-
-  return value;
 }
 
 function statusStyle(
@@ -1600,7 +1328,145 @@ function statusStyle(
 }
 
 /* =========================================================
-   SAFE VALUES
+   BOX / LINE / TABLE
+========================================================= */
+
+function Box({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        background: "#f8fafc",
+        borderRadius: 10,
+        padding: 12,
+      }}
+    >
+      <b>{title}</b>
+
+      <div
+        style={{
+          marginTop: 8,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Line({
+  k,
+  v,
+}: {
+  k: string;
+  v: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent:
+          "space-between",
+        alignItems: "center",
+        gap: 15,
+        padding: "4px 0",
+        fontSize: 13,
+      }}
+    >
+      <span
+        style={{
+          color: "#64748b",
+          flexShrink: 0,
+        }}
+      >
+        {k}
+      </span>
+
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: 700,
+        }}
+      >
+        {isPrimitive(v)
+          ? safeText(v)
+          : v}
+      </div>
+    </div>
+  );
+}
+
+function Th({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <th
+      style={{
+        textAlign: "left",
+        padding: 8,
+        background: "#f8fafc",
+        borderBottom:
+          "1px solid #e2e8f0",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  colSpan,
+}: {
+  children: React.ReactNode;
+  colSpan?: number;
+}) {
+  return (
+    <td
+      colSpan={colSpan}
+      style={{
+        padding: 8,
+        borderBottom:
+          "1px solid #f1f5f9",
+        verticalAlign: "top",
+      }}
+    >
+      {children}
+    </td>
+  );
+}
+
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  fontSize: 13,
+  minWidth: 950,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  border:
+    "1px solid #cbd5e1",
+  borderRadius: 9,
+  padding:
+    "10px 12px",
+  background: "#fff",
+  color: "#0f172a",
+  outline: "none",
+  fontSize: 14,
+};
+
+/* =========================================================
+   HELPERS
 ========================================================= */
 
 function safeText(v: any) {
@@ -1642,19 +1508,20 @@ function safeNumber(v: any) {
 function safePercent(v: any) {
   return safeNumber(
     v
-  ).toLocaleString("tr-TR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
+  ).toLocaleString(
+    "tr-TR",
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }
+  );
 }
-
-/* =========================================================
-   MONEY
-========================================================= */
 
 function money(v: any) {
   return (
-    safeNumber(v).toLocaleString(
+    safeNumber(
+      v
+    ).toLocaleString(
       "tr-TR",
       {
         minimumFractionDigits: 2,
@@ -1663,10 +1530,6 @@ function money(v: any) {
     ) + " ₺"
   );
 }
-
-/* =========================================================
-   DATE
-========================================================= */
 
 function formatDate(v: any) {
   if (!v) {
@@ -1697,14 +1560,12 @@ function dateValue(v: any) {
   const n =
     new Date(v).getTime();
 
-  return Number.isNaN(n)
+  return Number.isNaN(
+    n
+  )
     ? 0
     : n;
 }
-
-/* =========================================================
-   WORK ORDER SIRALAMA
-========================================================= */
 
 function compareWorkOrderDesc(
   a: any,
@@ -1712,7 +1573,9 @@ function compareWorkOrderDesc(
 ) {
   const A =
     BigInt(
-      String(a || "0").replace(
+      String(
+        a || "0"
+      ).replace(
         /\D/g,
         ""
       ) || "0"
@@ -1720,7 +1583,9 @@ function compareWorkOrderDesc(
 
   const B =
     BigInt(
-      String(b || "0").replace(
+      String(
+        b || "0"
+      ).replace(
         /\D/g,
         ""
       ) || "0"
@@ -1743,7 +1608,9 @@ function compareWorkOrderAsc(
 ) {
   const A =
     BigInt(
-      String(a || "0").replace(
+      String(
+        a || "0"
+      ).replace(
         /\D/g,
         ""
       ) || "0"
@@ -1751,7 +1618,9 @@ function compareWorkOrderAsc(
 
   const B =
     BigInt(
-      String(b || "0").replace(
+      String(
+        b || "0"
+      ).replace(
         /\D/g,
         ""
       ) || "0"
@@ -1768,36 +1637,28 @@ function compareWorkOrderAsc(
   return 0;
 }
 
-/* =========================================================
-   SEARCH NORMALIZE
-========================================================= */
-
 function normalize(v: any) {
-  return String(v || "")
+  return String(
+    v || ""
+  )
     .trim()
     .toLocaleLowerCase(
       "tr-TR"
     );
 }
 
-/* =========================================================
-   REACT VALUE
-========================================================= */
-
 function isPrimitive(
   v: React.ReactNode
 ) {
   return (
-    typeof v === "string" ||
-    typeof v === "number" ||
+    typeof v ===
+      "string" ||
+    typeof v ===
+      "number" ||
     v === null ||
     v === undefined
   );
 }
-
-/* =========================================================
-   URL
-========================================================= */
 
 function makeUrl({
   q,
@@ -1830,7 +1691,8 @@ function makeUrl({
 
   if (
     sirala &&
-    sirala !== "ikk-yeni"
+    sirala !==
+      "ikk-yeni"
   ) {
     params.set(
       "sirala",
