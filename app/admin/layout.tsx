@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Wrench,
   ClipboardList,
+  RefreshCw,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -150,6 +151,13 @@ export default function AdminLayout({
               icon={<ClipboardList size={18} />}
             >
               İş Emirleri
+            </Nav>
+
+            <Nav
+              href="/admin/tofas-gelenler"
+              icon={<RefreshCw size={18} />}
+            >
+              TOFAŞ'tan Gelenler
             </Nav>
 
             <Nav
