@@ -17,9 +17,8 @@ import {
   ExternalLink,
   Wrench,
   ClipboardList,
-  RefreshCw,
-  SearchCheck,
-  ChevronDown,
+  Car,
+  RefreshCcw,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -42,7 +41,10 @@ export default function AdminLayout({
           minHeight: "100vh",
         }}
       >
-        {/* SOL MENÜ */}
+        {/* =====================================================
+            SOL MENÜ
+        ===================================================== */}
+
         <aside
           style={{
             background:
@@ -50,9 +52,13 @@ export default function AdminLayout({
             color: "#fff",
             padding: "24px 18px",
             borderRight: "1px solid #1e293b",
+            minHeight: "100vh",
           }}
         >
-          {/* LOGO / BAŞLIK */}
+          {/* =====================================================
+              LOGO / BAŞLIK
+          ===================================================== */}
+
           <Link
             href="/admin"
             style={{
@@ -74,6 +80,7 @@ export default function AdminLayout({
                 placeItems: "center",
                 fontWeight: 900,
                 fontSize: 16,
+                flexShrink: 0,
               }}
             >
               TO
@@ -99,11 +106,16 @@ export default function AdminLayout({
             </div>
           </Link>
 
-          {/* MENÜ */}
+          {/* =====================================================
+              GENEL
+          ===================================================== */}
+
+          <MenuTitle>GENEL</MenuTitle>
+
           <nav
             style={{
               display: "grid",
-              gap: 7,
+              gap: 5,
             }}
           >
             <Nav
@@ -133,7 +145,20 @@ export default function AdminLayout({
             >
               Sipariş Takibi
             </Nav>
+          </nav>
 
+          {/* =====================================================
+              STOK
+          ===================================================== */}
+
+          <MenuTitle>STOK</MenuTitle>
+
+          <nav
+            style={{
+              display: "grid",
+              gap: 5,
+            }}
+          >
             <Nav
               href="/admin/stok"
               icon={<Boxes size={18} />}
@@ -141,110 +166,60 @@ export default function AdminLayout({
               Toptan / E-Ticaret Stok
             </Nav>
 
-            {/* SERVİS ANA MENÜ */}
-            <details
-              open
-              style={{
-                marginTop: 2,
-              }}
+            <Nav
+              href="/admin/servis-stok"
+              icon={<Wrench size={18} />}
             >
-              <summary
-                style={{
-                  listStyle: "none",
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "11px 12px",
-                  borderRadius: 9,
-                  color: "#ffffff",
-                  fontWeight: 900,
-                  fontSize: 14,
-                  cursor: "pointer",
-                  background: "#162033",
-                  border: "1px solid #243044",
-                }}
-              >
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "grid",
-                      placeItems: "center",
-                      color: "#f43f5e",
-                    }}
-                  >
-                    <Wrench size={18} />
-                  </span>
+              Servis Stok
+            </Nav>
+          </nav>
 
-                  SERVİS
-                </span>
+          {/* =====================================================
+              SERVİS
+          ===================================================== */}
 
-                <ChevronDown
-                  size={16}
-                  color="#94a3b8"
-                />
-              </summary>
+          <MenuTitle>SERVİS</MenuTitle>
 
-              <div
-                style={{
-                  marginTop: 6,
-                  marginLeft: 14,
-                  paddingLeft: 12,
-                  borderLeft: "1px solid #334155",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <SubNav
-                  href="/admin/servis"
-                  icon={<LayoutDashboard size={16} />}
-                >
-                  Servis Genel Bakış
-                </SubNav>
+          <nav
+            style={{
+              display: "grid",
+              gap: 5,
+            }}
+          >
+            <Nav
+              href="/admin/servis/is-emirleri"
+              icon={<ClipboardList size={18} />}
+            >
+              İş Emirleri
+            </Nav>
 
-                <SubNav
-                  href="/admin/servis-stok"
-                  icon={<Boxes size={16} />}
-                >
-                  Servis Stok
-                </SubNav>
-
-                <SubNav
-                  href="/admin/servis/is-emirleri"
-                  icon={<ClipboardList size={16} />}
-                >
-                  İş Emirleri
-                </SubNav>
-
-                <SubNav
-                  href="/admin/servis/is-emri-kontrol"
-                  icon={<SearchCheck size={16} />}
-                >
-                  İş Emri Kontrol
-                </SubNav>
-
-                <SubNav
-                  href="/admin/servis/fatura-kes"
-                  icon={<ReceiptText size={16} />}
-                >
-                  Fatura Kes
-                </SubNav>
-              </div>
-            </details>
+            <Nav
+              href="/admin/servis/arac-gecmisi"
+              icon={<Car size={18} />}
+            >
+              Araç Geçmişi
+            </Nav>
 
             <Nav
               href="/admin/tofas-gelenler"
-              icon={<RefreshCw size={18} />}
+              icon={<RefreshCcw size={18} />}
             >
-              TOFAŞ'tan Gelenler
+              TOFAŞ&apos;tan Gelenler
             </Nav>
+          </nav>
 
+          {/* =====================================================
+              STOK HAREKET / MALİYET
+          ===================================================== */}
+
+          <MenuTitle>OPERASYON</MenuTitle>
+
+          <nav
+            style={{
+              display: "grid",
+              gap: 5,
+            }}
+          >
             <Nav
               href="/admin/stok-hareketleri"
               icon={<History size={18} />}
@@ -279,7 +254,20 @@ export default function AdminLayout({
             >
               Kargo Yönetimi
             </Nav>
+          </nav>
 
+          {/* =====================================================
+              SİSTEM
+          ===================================================== */}
+
+          <MenuTitle>SİSTEM</MenuTitle>
+
+          <nav
+            style={{
+              display: "grid",
+              gap: 5,
+            }}
+          >
             <Nav
               href="/admin/ayarlar"
               icon={<Settings size={18} />}
@@ -288,10 +276,13 @@ export default function AdminLayout({
             </Nav>
           </nav>
 
-          {/* ALT KUTU */}
+          {/* =====================================================
+              STOK AÇIKLAMASI
+          ===================================================== */}
+
           <div
             style={{
-              marginTop: 26,
+              marginTop: 28,
               padding: 14,
               background: "#111827",
               border: "1px solid #243044",
@@ -322,7 +313,10 @@ export default function AdminLayout({
             </div>
           </div>
 
-          {/* SİTEYE DÖN */}
+          {/* =====================================================
+              SİTEYE DÖN
+          ===================================================== */}
+
           <Link
             href="/"
             style={{
@@ -335,25 +329,36 @@ export default function AdminLayout({
               padding: "11px 12px",
               border: "1px solid #243044",
               borderRadius: 10,
+              fontWeight: 700,
+              fontSize: 14,
             }}
           >
             <ExternalLink size={17} />
+
             Siteyi Gör
           </Link>
         </aside>
 
-        {/* SAĞ İÇERİK */}
-        <div
+        {/* =====================================================
+            SAĞ İÇERİK
+        ===================================================== */}
+
+        <main
           style={{
             minWidth: 0,
+            width: "100%",
           }}
         >
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );
 }
+
+/* =========================================================
+   NAV
+========================================================= */
 
 function Nav({
   href,
@@ -371,7 +376,7 @@ function Nav({
         display: "flex",
         gap: 10,
         alignItems: "center",
-        padding: "11px 12px",
+        padding: "10px 12px",
         borderRadius: 9,
         color: "#dbe4ef",
         textDecoration: "none",
@@ -385,6 +390,7 @@ function Nav({
           display: "grid",
           placeItems: "center",
           color: "#94a3b8",
+          flexShrink: 0,
         }}
       >
         {icon}
@@ -395,41 +401,28 @@ function Nav({
   );
 }
 
-function SubNav({
-  href,
-  icon,
+/* =========================================================
+   MENÜ BAŞLIĞI
+========================================================= */
+
+function MenuTitle({
   children,
 }: {
-  href: string;
-  icon: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
+    <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 9,
-        padding: "9px 10px",
-        borderRadius: 8,
-        color: "#cbd5e1",
-        textDecoration: "none",
-        fontSize: 13,
-        fontWeight: 700,
+        color: "#64748b",
+        fontSize: 10,
+        fontWeight: 900,
+        letterSpacing: 1.1,
+        marginTop: 22,
+        marginBottom: 7,
+        paddingLeft: 11,
       }}
     >
-      <span
-        style={{
-          color: "#64748b",
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
-        {icon}
-      </span>
-
-      <span>{children}</span>
-    </Link>
+      {children}
+    </div>
   );
 }
