@@ -22,12 +22,27 @@ const money = (v: any) =>
         maximumFractionDigits: 2,
       }) + " ₺";
 
+function dateTime(value: any) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toLocaleString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function TofasIncomingClient({
   initialRows,
-  initialPendingSyncIds,
+  initialPendingSyncIds = [],
 }: {
   initialRows: any[];
-  initialPendingSyncIds: number[];
+  initialPendingSyncIds?: number[];
 }) {
   const router = useRouter();
 
@@ -90,16 +105,18 @@ export default function TofasIncomingClient({
 
   return (
     <div style={{ padding: 26 }}>
-      <div style={{
-        display:"flex",
-        justifyContent:"space-between",
-        gap:16,
-        alignItems:"end"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 16,
+          alignItems: "end",
+        }}
+      >
         <div>
-          <small style={{ color:"#c90020", fontWeight:900 }}>TOFAŞ BOS</small>
-          <h1 style={{ margin:"4px 0" }}>TOFAŞ'tan Gelen Ürünler</h1>
-          <p style={{ margin:0, color:"#64748b" }}>
+          <small style={{ color: "#c90020", fontWeight: 900 }}>TOFAŞ BOS</small>
+          <h1 style={{ margin: "4px 0" }}>TOFAŞ'tan Gelen Ürünler</h1>
+          <p style={{ margin: 0, color: "#64748b" }}>
             Yeni parçaları kontrol et, fiyatı güncelle ve siteye yayınla.
           </p>
         </div>
@@ -107,35 +124,39 @@ export default function TofasIncomingClient({
         <button
           onClick={() => router.refresh()}
           style={{
-            background:"#0f172a",
-            color:"#fff",
-            border:0,
-            padding:"10px 14px",
-            borderRadius:8,
-            fontWeight:800
+            background: "#0f172a",
+            color: "#fff",
+            border: 0,
+            padding: "10px 14px",
+            borderRadius: 8,
+            fontWeight: 800,
           }}
         >
           Listeyi Yenile
         </button>
       </div>
 
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(3,1fr)",
-        gap:10,
-        marginTop:16
-      }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3,1fr)",
+          gap: 10,
+          marginTop: 16,
+        }}
+      >
         <Stat title="Onay Bekleyen" value={pendingCount} />
         <Stat title="Yayınlanan" value={publishedCount} />
         <Stat title="Reddedilen" value={rejectedCount} />
       </div>
 
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"1fr 190px",
-        gap:8,
-        marginTop:14
-      }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 190px",
+          gap: 8,
+          marginTop: 14,
+        }}
+      >
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -155,21 +176,25 @@ export default function TofasIncomingClient({
         </select>
       </div>
 
-      <div style={{
-        marginTop:12,
-        background:"#fff",
-        border:"1px solid #e2e8f0",
-        borderRadius:12,
-        overflow:"auto"
-      }}>
-        <table style={{
-          width:"100%",
-          minWidth:1550,
-          borderCollapse:"collapse",
-          fontSize:13
-        }}>
+      <div
+        style={{
+          marginTop: 12,
+          background: "#fff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          overflow: "auto",
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            minWidth: 1690,
+            borderCollapse: "collapse",
+            fontSize: 13,
+          }}
+        >
           <thead>
-            <tr style={{ background:"#f8fafc" }}>
+            <tr style={{ background: "#f8fafc" }}>
               <Th>OEM</Th>
               <Th>Ürün</Th>
               <Th>Liste KDV'li</Th>
@@ -177,6 +202,7 @@ export default function TofasIncomingClient({
               <Th>Ana Bayi</Th>
               <Th>Ort. Maliyet</Th>
               <Th>Son Alış</Th>
+              <Th>Güncelleme</Th>
               <Th>Kategori</Th>
               <Th>Stok</Th>
               <Th>Site Fiyatı</Th>
@@ -199,11 +225,14 @@ export default function TofasIncomingClient({
 
             {!rows.length && (
               <tr>
-                <td colSpan={11} style={{
-                  padding:35,
-                  textAlign:"center",
-                  color:"#64748b"
-                }}>
+                <td
+                  colSpan={12}
+                  style={{
+                    padding: 35,
+                    textAlign: "center",
+                    color: "#64748b",
+                  }}
+                >
                   Bu filtrede ürün bulunmuyor.
                 </td>
               </tr>
@@ -229,6 +258,8 @@ function CompactRow({
     Number(row.selected_sale_price ?? row.tofas_list_price_vat ?? 0)
   );
 
+  const syncedAt = dateTime(row.last_price_sync_at);
+
   async function publish() {
     if (!category) return alert("Kategori seç.");
     if (!Number.isFinite(salePrice) || salePrice <= 0) {
@@ -241,13 +272,13 @@ function CompactRow({
       const response = await fetch(
         `/api/admin/tofas-gelenler/${row.id}/publish`,
         {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body:JSON.stringify({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             category,
             stock,
-            salePrice
-          })
+            salePrice,
+          }),
         }
       );
 
@@ -273,7 +304,7 @@ function CompactRow({
     try {
       const response = await fetch(
         `/api/admin/tofas-gelenler/${row.id}/reject`,
-        { method:"POST" }
+        { method: "POST" }
       );
 
       const result = await response.json();
@@ -291,15 +322,19 @@ function CompactRow({
   }
 
   return (
-    <tr style={{ borderTop:"1px solid #eef2f7" }}>
-      <Td><b>{row.product_code}</b></Td>
+    <tr style={{ borderTop: "1px solid #eef2f7" }}>
+      <Td>
+        <b>{row.product_code}</b>
+      </Td>
 
       <Td>
-        <div style={{
-          maxWidth:300,
-          fontWeight:700,
-          whiteSpace:"normal"
-        }}>
+        <div
+          style={{
+            maxWidth: 300,
+            fontWeight: 700,
+            whiteSpace: "normal",
+          }}
+        >
           {row.product_name}
         </div>
       </Td>
@@ -311,11 +346,47 @@ function CompactRow({
       <Td>{money(row.tofas_last_purchase_price)}</Td>
 
       <Td>
+        {syncedAt ? (
+          <div
+            style={{
+              display: "inline-flex",
+              flexDirection: "column",
+              gap: 2,
+              background: "#dcfce7",
+              color: "#166534",
+              border: "1px solid #bbf7d0",
+              padding: "5px 8px",
+              borderRadius: 7,
+              fontWeight: 900,
+              lineHeight: 1.15,
+            }}
+          >
+            <span>✓ Güncellendi</span>
+            <small style={{ color: "#15803d", fontWeight: 800 }}>
+              {syncedAt}
+            </small>
+          </div>
+        ) : (
+          <span
+            style={{
+              background: "#f1f5f9",
+              color: "#64748b",
+              padding: "5px 8px",
+              borderRadius: 7,
+              fontWeight: 800,
+            }}
+          >
+            Henüz güncellenmedi
+          </span>
+        )}
+      </Td>
+
+      <Td>
         {row.status === "pending" ? (
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            style={{ ...smallInput, minWidth:130 }}
+            style={{ ...smallInput, minWidth: 130 }}
           >
             <option value="">Kategori seç</option>
             {categories.map((x) => (
@@ -336,7 +407,7 @@ function CompactRow({
             onChange={(e) =>
               setStock(Math.max(0, Number(e.target.value || 0)))
             }
-            style={{ ...smallInput, width:70 }}
+            style={{ ...smallInput, width: 70 }}
           />
         ) : (
           row.selected_stock
@@ -352,7 +423,7 @@ function CompactRow({
             onChange={(e) =>
               setSalePrice(Number(e.target.value || 0))
             }
-            style={{ ...smallInput, width:105 }}
+            style={{ ...smallInput, width: 105 }}
           />
         ) : (
           money(row.selected_sale_price)
@@ -361,19 +432,21 @@ function CompactRow({
 
       <Td>
         {row.status === "pending" ? (
-          <div style={{
-            display:"flex",
-            gap:5,
-            flexWrap:"wrap",
-            minWidth:250
-          }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 5,
+              flexWrap: "wrap",
+              minWidth: 250,
+            }}
+          >
             <button
               disabled={syncing}
               onClick={() => void onPriceSync(row.id)}
               style={{
                 ...buttonBase,
-                background:"#1d4ed8",
-                color:"#fff"
+                background: "#1d4ed8",
+                color: "#fff",
               }}
             >
               {syncing ? "Kuyrukta" : "TOFAŞ'tan Fiyat Güncelle"}
@@ -384,8 +457,8 @@ function CompactRow({
               onClick={() => void publish()}
               style={{
                 ...buttonBase,
-                background:"#c90020",
-                color:"#fff"
+                background: "#c90020",
+                color: "#fff",
               }}
             >
               Yayınla
@@ -409,13 +482,15 @@ function CompactRow({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th style={{
-      textAlign:"left",
-      padding:"11px 10px",
-      color:"#475569",
-      fontSize:12,
-      whiteSpace:"nowrap"
-    }}>
+    <th
+      style={{
+        textAlign: "left",
+        padding: "11px 10px",
+        color: "#475569",
+        fontSize: 12,
+        whiteSpace: "nowrap",
+      }}
+    >
       {children}
     </th>
   );
@@ -423,49 +498,53 @@ function Th({ children }: { children: React.ReactNode }) {
 
 function Td({ children }: { children: React.ReactNode }) {
   return (
-    <td style={{
-      padding:"9px 10px",
-      verticalAlign:"middle",
-      whiteSpace:"nowrap"
-    }}>
+    <td
+      style={{
+        padding: "9px 10px",
+        verticalAlign: "middle",
+        whiteSpace: "nowrap",
+      }}
+    >
       {children}
     </td>
   );
 }
 
-function Stat({ title, value }: { title:string; value:number }) {
+function Stat({ title, value }: { title: string; value: number }) {
   return (
-    <div style={{
-      background:"#fff",
-      border:"1px solid #e2e8f0",
-      borderRadius:10,
-      padding:"12px 14px"
-    }}>
-      <small style={{ color:"#64748b", fontWeight:800 }}>{title}</small>
-      <b style={{ display:"block", fontSize:22, marginTop:3 }}>{value}</b>
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        borderRadius: 10,
+        padding: "12px 14px",
+      }}
+    >
+      <small style={{ color: "#64748b", fontWeight: 800 }}>{title}</small>
+      <b style={{ display: "block", fontSize: 22, marginTop: 3 }}>{value}</b>
     </div>
   );
 }
 
 const inputStyle: React.CSSProperties = {
-  border:"1px solid #cbd5e1",
-  borderRadius:8,
-  padding:"10px 12px",
-  background:"#fff"
+  border: "1px solid #cbd5e1",
+  borderRadius: 8,
+  padding: "10px 12px",
+  background: "#fff",
 };
 
 const smallInput: React.CSSProperties = {
-  border:"1px solid #cbd5e1",
-  borderRadius:7,
-  padding:"7px 8px",
-  background:"#fff"
+  border: "1px solid #cbd5e1",
+  borderRadius: 7,
+  padding: "7px 8px",
+  background: "#fff",
 };
 
 const buttonBase: React.CSSProperties = {
-  border:"1px solid #cbd5e1",
-  borderRadius:7,
-  padding:"7px 9px",
-  fontWeight:800,
-  cursor:"pointer",
-  fontSize:12
+  border: "1px solid #cbd5e1",
+  borderRadius: 7,
+  padding: "7px 9px",
+  fontWeight: 800,
+  cursor: "pointer",
+  fontSize: 12,
 };
