@@ -56,18 +56,23 @@ export default async function WorkOrdersPage({
 
   const counts = {
     TUMU: allOrders.length,
+
     FATURA: allOrders.filter(
       (x: any) => getStatus(x) === "FATURA"
     ).length,
+
     ATOLYE: allOrders.filter(
       (x: any) => getStatus(x) === "ATÖLYE"
     ).length,
+
     BEKLEMEDE: allOrders.filter(
       (x: any) => getStatus(x) === "BEKLEMEDE"
     ).length,
+
     TASLAK: allOrders.filter(
       (x: any) => getStatus(x) === "TASLAK"
     ).length,
+
     IPTAL: allOrders.filter(
       (x: any) => getStatus(x) === "İPTAL"
     ).length,
@@ -80,8 +85,13 @@ export default async function WorkOrdersPage({
     filteredOrders = filteredOrders.filter((wo: any) => {
       const status = getStatus(wo);
 
-      if (durum === "ATOLYE") return status === "ATÖLYE";
-      if (durum === "IPTAL") return status === "İPTAL";
+      if (durum === "ATOLYE") {
+        return status === "ATÖLYE";
+      }
+
+      if (durum === "IPTAL") {
+        return status === "İPTAL";
+      }
 
       return status === durum;
     });
@@ -101,6 +111,7 @@ export default async function WorkOrdersPage({
         wo.customer_phone,
         wo.vehicle_description,
         wo.advisor_name,
+        wo.model_year,
       ]
         .map((x) => normalize(x))
         .join(" ");
@@ -257,7 +268,8 @@ export default async function WorkOrdersPage({
         method="get"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(250px,1fr) 190px 210px 110px",
+          gridTemplateColumns:
+            "minmax(250px,1fr) 190px 210px 110px",
           gap: 10,
           marginTop: 16,
           background: "#fff",
@@ -270,7 +282,7 @@ export default async function WorkOrdersPage({
           type="text"
           name="q"
           defaultValue={q}
-          placeholder="İş emri, plaka, şase, müşteri ara..."
+          placeholder="İş emri, plaka, şase, müşteri, model ara..."
           style={inputStyle}
         />
 
@@ -345,12 +357,42 @@ export default async function WorkOrdersPage({
         <b>{filteredOrders.length}</b> iş emri gösteriliyor.
       </div>
 
+      {/* KOLON BAŞLIKLARI */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "170px 115px 150px minmax(130px, 1fr) 145px 150px",
+          gap: 12,
+          alignItems: "center",
+          marginTop: 12,
+          padding: "11px 16px",
+          background: "#e9eef5",
+          border: "1px solid #d5deea",
+          borderRadius: 10,
+          fontSize: 12,
+          fontWeight: 950,
+          color: "#334155",
+          textTransform: "uppercase",
+          letterSpacing: 0.3,
+        }}
+      >
+        <span>İş Emri</span>
+        <span>Plaka</span>
+        <span>Şase</span>
+        <span>Model</span>
+        <span>Durum</span>
+        <span style={{ textAlign: "right" }}>
+          Toplam
+        </span>
+      </div>
+
       {/* İŞ EMİRLERİ */}
       <div
         style={{
           display: "grid",
           gap: 10,
-          marginTop: 12,
+          marginTop: 8,
         }}
       >
         {filteredOrders.map((wo: any) => {
@@ -390,15 +432,25 @@ export default async function WorkOrdersPage({
                   listStyle: "none",
                 }}
               >
-                <b>{safeText(wo.work_order_no)}</b>
+                {/* İŞ EMRİ */}
+                <b>
+                  {safeText(wo.work_order_no)}
+                </b>
 
-                <b>{safeText(wo.plate)}</b>
+                {/* PLAKA */}
+                <b>
+                  {safeText(wo.plate)}
+                </b>
 
-                <span>{safeText(wo.vin)}</span>
+                {/* ŞASE */}
+                <span>
+                  {safeText(wo.vin)}
+                </span>
 
+                {/* MODEL */}
                 <span
                   style={{
-                    fontWeight: 700,
+                    fontWeight: 800,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -406,12 +458,16 @@ export default async function WorkOrdersPage({
                 >
                   {safeText(
                     wo.vehicle_description ||
-                      wo.customer_name
+                      wo.model_year
                   )}
                 </span>
 
-                <StatusBadge status={status} />
+                {/* DURUM */}
+                <StatusBadge
+                  status={status}
+                />
 
+                {/* TOPLAM */}
                 <b
                   style={{
                     textAlign: "right",
@@ -425,7 +481,8 @@ export default async function WorkOrdersPage({
               <div
                 style={{
                   padding: "0 16px 18px",
-                  borderTop: "1px solid #f1f5f9",
+                  borderTop:
+                    "1px solid #f1f5f9",
                 }}
               >
                 <div
@@ -438,26 +495,45 @@ export default async function WorkOrdersPage({
                   }}
                 >
                   <Box title="Araç">
-                    <Line k="Plaka" v={wo.plate} />
-                    <Line k="Şase" v={wo.vin} />
+                    <Line
+                      k="Plaka"
+                      v={wo.plate}
+                    />
+
+                    <Line
+                      k="Şase"
+                      v={wo.vin}
+                    />
+
                     <Line
                       k="Motor No"
                       v={wo.engine_no}
                     />
+
                     <Line
                       k="Ünite No"
                       v={wo.unit_no}
                     />
+
                     <Line
                       k="Model/Yıl"
                       v={wo.model_year}
                     />
+
                     <Line
                       k="Araç"
                       v={wo.vehicle_description}
                     />
-                    <Line k="Renk" v={wo.color} />
-                    <Line k="KM" v={wo.mileage} />
+
+                    <Line
+                      k="Renk"
+                      v={wo.color}
+                    />
+
+                    <Line
+                      k="KM"
+                      v={wo.mileage}
+                    />
                   </Box>
 
                   <Box title="Müşteri / Servis">
@@ -498,7 +574,12 @@ export default async function WorkOrdersPage({
 
                     <Line
                       k="Durum"
-                      v={<StatusBadge status={status} small />}
+                      v={
+                        <StatusBadge
+                          status={status}
+                          small
+                        />
+                      }
                     />
                   </Box>
 
@@ -526,7 +607,9 @@ export default async function WorkOrdersPage({
 
                     <Line
                       k="KDV"
-                      v={money(wo.vat_total)}
+                      v={money(
+                        wo.vat_total
+                      )}
                     />
 
                     <Line
@@ -550,7 +633,8 @@ export default async function WorkOrdersPage({
                     style={{
                       marginTop: 12,
                       background: "#fff7ed",
-                      border: "1px solid #fed7aa",
+                      border:
+                        "1px solid #fed7aa",
                       borderRadius: 9,
                       padding: 11,
                     }}
@@ -562,11 +646,20 @@ export default async function WorkOrdersPage({
                   </div>
                 ) : null}
 
-                <h3 style={{ marginTop: 20 }}>
+                {/* YEDEK PARÇALAR */}
+                <h3
+                  style={{
+                    marginTop: 20,
+                  }}
+                >
                   Yedek Parçalar
                 </h3>
 
-                <div style={{ overflowX: "auto" }}>
+                <div
+                  style={{
+                    overflowX: "auto",
+                  }}
+                >
                   <table style={table}>
                     <thead>
                       <tr>
@@ -574,78 +667,85 @@ export default async function WorkOrdersPage({
                         <Th>OEM</Th>
                         <Th>Parça</Th>
                         <Th>Adet</Th>
-                        <Th>KDV Hariç Birim</Th>
+                        <Th>
+                          KDV Hariç Birim
+                        </Th>
                         <Th>İsk.</Th>
                         <Th>KDV</Th>
                         <Th>KDV Tutarı</Th>
-                        <Th>KDV Dahil Toplam</Th>
+                        <Th>
+                          KDV Dahil Toplam
+                        </Th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {parts.map((p: any) => (
-                        <tr key={p.id}>
-                          <Td>
-                            {safeText(
-                              p.row_ref
-                            )}
-                          </Td>
-
-                          <Td>
-                            <b>
+                      {parts.map(
+                        (p: any) => (
+                          <tr key={p.id}>
+                            <Td>
                               {safeText(
-                                p.product_code
+                                p.row_ref
                               )}
-                            </b>
-                          </Td>
+                            </Td>
 
-                          <Td>
-                            {safeText(
-                              p.description
-                            )}
-                          </Td>
+                            <Td>
+                              <b>
+                                {safeText(
+                                  p.product_code
+                                )}
+                              </b>
+                            </Td>
 
-                          <Td>
-                            {safeText(
-                              p.quantity
-                            )}
-                          </Td>
+                            <Td>
+                              {safeText(
+                                p.description
+                              )}
+                            </Td>
 
-                          <Td>
-                            {money(
-                              p.unit_price
-                            )}
-                          </Td>
+                            <Td>
+                              {safeText(
+                                p.quantity
+                              )}
+                            </Td>
 
-                          <Td>
-                            %
-                            {safePercent(
-                              p.discount_rate
-                            )}
-                          </Td>
-
-                          <Td>
-                            %
-                            {safePercent(
-                              p.vat_rate || 20
-                            )}
-                          </Td>
-
-                          <Td>
-                            {money(
-                              p.line_vat
-                            )}
-                          </Td>
-
-                          <Td>
-                            <b>
+                            <Td>
                               {money(
-                                p.line_total
+                                p.unit_price
                               )}
-                            </b>
-                          </Td>
-                        </tr>
-                      ))}
+                            </Td>
+
+                            <Td>
+                              %
+                              {safePercent(
+                                p.discount_rate
+                              )}
+                            </Td>
+
+                            <Td>
+                              %
+                              {safePercent(
+                                p.vat_rate ||
+                                  20
+                              )}
+                            </Td>
+
+                            <Td>
+                              {money(
+                                p.line_vat
+                              )}
+                            </Td>
+
+                            <Td>
+                              <b>
+                                {money(
+                                  p.line_total
+                                )}
+                              </b>
+                            </Td>
+                          </tr>
+                        )
+                      )}
 
                       {!parts.length && (
                         <tr>
@@ -666,11 +766,20 @@ export default async function WorkOrdersPage({
                   </table>
                 </div>
 
-                <h3 style={{ marginTop: 20 }}>
+                {/* İŞÇİLİKLER */}
+                <h3
+                  style={{
+                    marginTop: 20,
+                  }}
+                >
                   İşçilikler
                 </h3>
 
-                <div style={{ overflowX: "auto" }}>
+                <div
+                  style={{
+                    overflowX: "auto",
+                  }}
+                >
                   <table style={table}>
                     <thead>
                       <tr>
@@ -678,78 +787,85 @@ export default async function WorkOrdersPage({
                         <Th>Kod</Th>
                         <Th>İşçilik</Th>
                         <Th>Saat / Adet</Th>
-                        <Th>KDV Hariç Birim</Th>
+                        <Th>
+                          KDV Hariç Birim
+                        </Th>
                         <Th>İsk.</Th>
                         <Th>KDV</Th>
                         <Th>KDV Tutarı</Th>
-                        <Th>KDV Dahil Toplam</Th>
+                        <Th>
+                          KDV Dahil Toplam
+                        </Th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {labor.map((p: any) => (
-                        <tr key={p.id}>
-                          <Td>
-                            {safeText(
-                              p.row_ref
-                            )}
-                          </Td>
-
-                          <Td>
-                            <b>
+                      {labor.map(
+                        (p: any) => (
+                          <tr key={p.id}>
+                            <Td>
                               {safeText(
-                                p.labor_code
+                                p.row_ref
                               )}
-                            </b>
-                          </Td>
+                            </Td>
 
-                          <Td>
-                            {safeText(
-                              p.description
-                            )}
-                          </Td>
+                            <Td>
+                              <b>
+                                {safeText(
+                                  p.labor_code
+                                )}
+                              </b>
+                            </Td>
 
-                          <Td>
-                            {safeText(
-                              p.quantity
-                            )}
-                          </Td>
+                            <Td>
+                              {safeText(
+                                p.description
+                              )}
+                            </Td>
 
-                          <Td>
-                            {money(
-                              p.unit_price
-                            )}
-                          </Td>
+                            <Td>
+                              {safeText(
+                                p.quantity
+                              )}
+                            </Td>
 
-                          <Td>
-                            %
-                            {safePercent(
-                              p.discount_rate
-                            )}
-                          </Td>
-
-                          <Td>
-                            %
-                            {safePercent(
-                              p.vat_rate || 20
-                            )}
-                          </Td>
-
-                          <Td>
-                            {money(
-                              p.line_vat
-                            )}
-                          </Td>
-
-                          <Td>
-                            <b>
+                            <Td>
                               {money(
-                                p.line_total
+                                p.unit_price
                               )}
-                            </b>
-                          </Td>
-                        </tr>
-                      ))}
+                            </Td>
+
+                            <Td>
+                              %
+                              {safePercent(
+                                p.discount_rate
+                              )}
+                            </Td>
+
+                            <Td>
+                              %
+                              {safePercent(
+                                p.vat_rate ||
+                                  20
+                              )}
+                            </Td>
+
+                            <Td>
+                              {money(
+                                p.line_vat
+                              )}
+                            </Td>
+
+                            <Td>
+                              <b>
+                                {money(
+                                  p.line_total
+                                )}
+                              </b>
+                            </Td>
+                          </tr>
+                        )
+                      )}
 
                       {!labor.length && (
                         <tr>
@@ -795,9 +911,9 @@ export default async function WorkOrdersPage({
   );
 }
 
-/* ===========================
+/* =========================================================
    COMPONENTS
-=========================== */
+========================================================= */
 
 function CountCard({
   title,
@@ -860,9 +976,8 @@ function StatusBadge({
   status?: string | null;
   small?: boolean;
 }) {
-  const value = normalizeStatus(
-    status
-  );
+  const value =
+    normalizeStatus(status);
 
   const style =
     statusStyle(value);
@@ -879,7 +994,8 @@ function StatusBadge({
           ? "4px 8px"
           : "6px 12px",
         borderRadius: 999,
-        background: style.background,
+        background:
+          style.background,
         color: style.color,
         border: `1px solid ${style.border}`,
         fontSize: small ? 10 : 11,
@@ -910,7 +1026,11 @@ function Box({
     >
       <b>{title}</b>
 
-      <div style={{ marginTop: 8 }}>
+      <div
+        style={{
+          marginTop: 8,
+        }}
+      >
         {children}
       </div>
     </div>
@@ -1002,9 +1122,9 @@ function Td({
   );
 }
 
-/* ===========================
-   HELPERS
-=========================== */
+/* =========================================================
+   STYLES
+========================================================= */
 
 const table: React.CSSProperties = {
   width: "100%",
@@ -1024,6 +1144,10 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   fontSize: 14,
 };
+
+/* =========================================================
+   HELPERS
+========================================================= */
 
 function getStatus(wo: any) {
   return normalizeStatus(
@@ -1089,7 +1213,9 @@ function statusStyle(
   if (
     value === "KK" ||
     value === "KK2" ||
-    value.includes("KK2 BEKLEMEDE")
+    value.includes(
+      "KK2 BEKLEMEDE"
+    )
   ) {
     return {
       background: "#ede9fe",
@@ -1179,12 +1305,16 @@ function money(v: any) {
 }
 
 function formatDate(v: any) {
-  if (!v) return "-";
+  if (!v) {
+    return "-";
+  }
 
   const d = new Date(v);
 
   if (
-    Number.isNaN(d.getTime())
+    Number.isNaN(
+      d.getTime()
+    )
   ) {
     return "-";
   }
@@ -1195,9 +1325,12 @@ function formatDate(v: any) {
 }
 
 function dateValue(v: any) {
-  if (!v) return 0;
+  if (!v) {
+    return 0;
+  }
 
-  const n = new Date(v).getTime();
+  const n =
+    new Date(v).getTime();
 
   return Number.isNaN(n)
     ? 0
@@ -1207,7 +1340,9 @@ function dateValue(v: any) {
 function normalize(v: any) {
   return String(v || "")
     .trim()
-    .toLocaleLowerCase("tr-TR");
+    .toLocaleLowerCase(
+      "tr-TR"
+    );
 }
 
 function isPrimitive(
