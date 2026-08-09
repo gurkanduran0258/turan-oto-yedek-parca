@@ -18,6 +18,8 @@ import {
   Wrench,
   ClipboardList,
   RefreshCw,
+  SearchCheck,
+  ChevronDown,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -139,19 +141,102 @@ export default function AdminLayout({
               Toptan / E-Ticaret Stok
             </Nav>
 
-            <Nav
-              href="/admin/servis-stok"
-              icon={<Wrench size={18} />}
+            {/* SERVİS ANA MENÜ */}
+            <details
+              open
+              style={{
+                marginTop: 2,
+              }}
             >
-              Servis Stok
-            </Nav>
+              <summary
+                style={{
+                  listStyle: "none",
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "11px 12px",
+                  borderRadius: 9,
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  background: "#162033",
+                  border: "1px solid #243044",
+                }}
+              >
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "grid",
+                      placeItems: "center",
+                      color: "#f43f5e",
+                    }}
+                  >
+                    <Wrench size={18} />
+                  </span>
 
-            <Nav
-              href="/admin/is-emirleri"
-              icon={<ClipboardList size={18} />}
-            >
-              İş Emirleri
-            </Nav>
+                  SERVİS
+                </span>
+
+                <ChevronDown
+                  size={16}
+                  color="#94a3b8"
+                />
+              </summary>
+
+              <div
+                style={{
+                  marginTop: 6,
+                  marginLeft: 14,
+                  paddingLeft: 12,
+                  borderLeft: "1px solid #334155",
+                  display: "grid",
+                  gap: 4,
+                }}
+              >
+                <SubNav
+                  href="/admin/servis"
+                  icon={<LayoutDashboard size={16} />}
+                >
+                  Servis Genel Bakış
+                </SubNav>
+
+                <SubNav
+                  href="/admin/servis-stok"
+                  icon={<Boxes size={16} />}
+                >
+                  Servis Stok
+                </SubNav>
+
+                <SubNav
+                  href="/admin/servis/is-emirleri"
+                  icon={<ClipboardList size={16} />}
+                >
+                  İş Emirleri
+                </SubNav>
+
+                <SubNav
+                  href="/admin/servis/is-emri-kontrol"
+                  icon={<SearchCheck size={16} />}
+                >
+                  İş Emri Kontrol
+                </SubNav>
+
+                <SubNav
+                  href="/admin/servis/fatura-kes"
+                  icon={<ReceiptText size={16} />}
+                >
+                  Fatura Kes
+                </SubNav>
+              </div>
+            </details>
 
             <Nav
               href="/admin/tofas-gelenler"
@@ -300,6 +385,45 @@ function Nav({
           display: "grid",
           placeItems: "center",
           color: "#94a3b8",
+        }}
+      >
+        {icon}
+      </span>
+
+      <span>{children}</span>
+    </Link>
+  );
+}
+
+function SubNav({
+  href,
+  icon,
+  children,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        padding: "9px 10px",
+        borderRadius: 8,
+        color: "#cbd5e1",
+        textDecoration: "none",
+        fontSize: 13,
+        fontWeight: 700,
+      }}
+    >
+      <span
+        style={{
+          color: "#64748b",
+          display: "grid",
+          placeItems: "center",
         }}
       >
         {icon}
