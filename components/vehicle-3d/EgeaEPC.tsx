@@ -17,13 +17,67 @@ const EXPLODE:Record<GroupId,THREE.Vector3>={
 
 type MeshState={mesh:THREE.Mesh; pos:THREE.Vector3; material:THREE.Material|THREE.Material[]; visible:boolean};
 
+type Product={
+  id:number|string;
+  product_code:string;
+  product_name:string;
+  product_group:string|null;
+  sale_price:number;
+  stock:number;
+  image_url:string|null;
+};
+
+function formatMoney(value:number){
+  return new Intl.NumberFormat("tr-TR",{
+    style:"currency",
+    currency:"TRY"
+  }).format(Number(value||0));
+}
+
 export default function EgeaEPC(){
  const mount=useRef<HTMLDivElement>(null);
  const api=useRef<{setGroup:(g:GroupId)=>void;select:(p:CatalogPart)=>void}|null>(null);
  const [group,setGroupState]=useState<GroupId>("dis-govde");
  const [selected,setSelected]=useState<CatalogPart|null>(null);
  const [loaded,setLoaded]=useState(false);
+ const [selectedProducts,setSelectedProducts]=useState<Product[]>([]);
+ const [oemLoading,setOemLoading]=useState(false);
  const parts=useMemo(()=>PARTS.filter(p=>p.group===group),[group]);
+
+ async function loadSelectedProducts(part:CatalogPart){
+   setOemLoading(true);
+   setSelectedProducts([]);
+
+   const terms=[part.title];
+
+   for(const term of terms){
+     try{
+       const params=new URLSearchParams({
+         page:"1",
+         pageSize:"12",
+         search:term,
+       });
+
+       const response=await fetch(
+         `/api/products-list?${params.toString()}`,
+         {cache:"no-store"}
+       );
+
+       if(!response.ok)continue;
+
+       const data=await response.json() as {products?:Product[]};
+       const rows=Array.isArray(data.products)?data.products:[];
+
+       if(rows.length){
+         setSelectedProducts(rows);
+         setOemLoading(false);
+         return;
+       }
+     }catch{}
+   }
+
+   setOemLoading(false);
+ }
 
  useEffect(()=>{
   if(!mount.current)return;
@@ -105,10 +159,10 @@ export default function EgeaEPC(){
       moveByName(["trunk"],new THREE.Vector3(0,.7,-.3));
     }
     if(g==="dis-govde"){
-      moveByName(["door_front_left","door_rear_left"],new THREE.Vector3(-.55,0,0));
-      moveByName(["door_front_right","door_rear_right"],new THREE.Vector3(.55,0,0));
-      moveByName(["front_fender_left"],new THREE.Vector3(-.3,0,.2));
-      moveByName(["front_fender_right"],new THREE.Vector3(.3,0,.2));
+      // Kapıları normal yerinde tut.
+      // Önceki sürümde sabit yönle taşındıkları için bazı kapılar gövdenin içine giriyordu.
+      moveByName(["front_fender_left"],new THREE.Vector3(-.18,0,.12));
+      moveByName(["front_fender_right"],new THREE.Vector3(.18,0,.12));
     }
   };
 
@@ -196,12 +250,54 @@ export default function EgeaEPC(){
   });
 
   const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+
+  function nearestPart(clientX:number,clientY:number){
+    const rect=renderer.domElement.getBoundingClientRect();
+    let best:{part:CatalogPart;distance:number}|null=null;
+
+    for(const mesh of selectable){
+      if(!mesh.visible)continue;
+
+      const part=partForMesh(mesh.name);
+      if(!part)continue;
+
+      const box=new THREE.Box3().setFromObject(mesh);
+      const center=box.getCenter(new THREE.Vector3()).project(camera);
+
+      const sx=rect.left+(center.x+1)*.5*rect.width;
+      const sy=rect.top+(-center.y+1)*.5*rect.height;
+      const distance=Math.hypot(clientX-sx,clientY-sy);
+
+      if(distance<=65&&(!best||distance<best.distance)){
+        best={part,distance};
+      }
+    }
+
+    return best?.part||null;
+  }
+
   const click=(e:PointerEvent)=>{
     const r=renderer.domElement.getBoundingClientRect();
-    mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+    mouse.x=((e.clientX-r.left)/r.width)*2-1;
+    mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+
     ray.setFromCamera(mouse,camera);
-    const hit=ray.intersectObjects(selectable.filter(m=>m.visible),false)[0];
-    if(hit){const p=partForMesh(hit.object.name);if(p){setSelected(p);setGroupState(p.group);selectPart(p);}}
+
+    const hit=ray.intersectObjects(
+      selectable.filter(m=>m.visible),
+      false
+    )[0];
+
+    const p=hit
+      ?partForMesh(hit.object.name)
+      :nearestPart(e.clientX,e.clientY);
+
+    if(p){
+      setSelected(p);
+      setGroupState(p.group);
+      selectPart(p);
+      void loadSelectedProducts(p);
+    }
   };
   renderer.domElement.addEventListener("pointerdown",click);
   api.current={setGroup:applyGroup,select:selectPart};
@@ -210,8 +306,18 @@ export default function EgeaEPC(){
   return()=>{cancelAnimationFrame(id);ro.disconnect();renderer.domElement.removeEventListener("pointerdown",click);controls.dispose();renderer.dispose();el.innerHTML=""};
  },[]);
 
- const changeGroup=(g:GroupId)=>{setGroupState(g);setSelected(null);api.current?.setGroup(g)};
- const choose=(p:CatalogPart)=>{setGroupState(p.group);setSelected(p);api.current?.select(p)};
+ const changeGroup=(g:GroupId)=>{
+   setGroupState(g);
+   setSelected(null);
+   setSelectedProducts([]);
+   api.current?.setGroup(g);
+ };
+ const choose=(p:CatalogPart)=>{
+   setGroupState(p.group);
+   setSelected(p);
+   api.current?.select(p);
+   void loadSelectedProducts(p);
+ };
 
  return <div className="epc">
   <aside className="tree">
@@ -230,9 +336,52 @@ export default function EgeaEPC(){
    <p>{GROUPS.find(x=>x.id===group)?.description}</p>
    <div className="thead"><b>No</b><b>Parça Numarası</b><b>Parça Adı</b></div>
    {parts.map((p,i)=><button className={selected?.id===p.id?"row chosen":"row"} key={p.id} onClick={()=>choose(p)}>
-    <span>{i+1}</span><span>{p.oemCodes[0]||"OEM EŞLEŞTİR"}</span><strong>{p.title}</strong>
+    <span>{i+1}</span><span>{selected?.id===p.id&&selectedProducts.length
+      ? [...new Set(selectedProducts.map(x=>x.product_code))].slice(0,2).join(" / ")
+      : selected?.id===p.id&&oemLoading
+        ? "ARANIYOR…"
+        : "SEÇİNCE OTOMATİK"
+    }</span><strong>{p.title}</strong>
    </button>)}
-   {selected&&<div className="detail"><small>SEÇİLEN PARÇA</small><h3>{selected.title}</h3><p>3D model üzerinde seçildi. OEM kodlarını Supabase ürünleriyle bu satıra bağlayacağız.</p><a href={`/urunler?ara=${encodeURIComponent(selected.title)}`}>ÜRÜNLERİ GÖSTER</a></div>}
+   {selected&&<div className="detail">
+     <small>SEÇİLEN PARÇA</small>
+     <h3>{selected.title}</h3>
+
+     {oemLoading?(
+       <p>OEM ve ürünler aranıyor…</p>
+     ):selectedProducts.length?(
+       <>
+         {selectedProducts.slice(0,5).map(prod=>(
+           <a
+             key={String(prod.id)}
+             href={`/urun/${prod.id}`}
+             style={{
+               display:"block",
+               border:"1px solid #ddd",
+               padding:"8px",
+               marginBottom:"6px",
+               color:"#111",
+               textDecoration:"none",
+               background:"#fff"
+             }}
+           >
+             <b>{prod.product_code}</b>
+             <span style={{display:"block",fontSize:"11px",marginTop:"3px"}}>
+               {prod.product_name}
+             </span>
+             <small style={{display:"block",marginTop:"3px",color:"#666"}}>
+               {formatMoney(prod.sale_price)} · Stok {prod.stock}
+             </small>
+           </a>
+         ))}
+         <a href={`/urunler?ara=${encodeURIComponent(selected.title)}`}>
+           TÜM ÜRÜNLERİ GÖSTER
+         </a>
+       </>
+     ):(
+       <p>Bu isimle kayıtlı ürün bulunamadı.</p>
+     )}
+   </div>}
   </aside>
   <style jsx>{`
    .epc{display:grid;grid-template-columns:245px minmax(500px,1fr) 430px;height:calc(100vh - 135px);min-height:650px;background:#fff;border-top:1px solid #ddd}
