@@ -71,6 +71,7 @@ export default function EgeaRealEPC(){
   const [exploded,setExploded]=useState(false);
   const [xray,setXray]=useState(false);
   const [loaded,setLoaded]=useState(false);
+  const [loadError,setLoadError]=useState<string|null>(null);
 
   const [product,setProduct]=useState<Product|null>(null);
   const [loadingProduct,setLoadingProduct]=useState(false);
@@ -127,10 +128,10 @@ export default function EgeaRealEPC(){
     );
 
     const renderer=new THREE.WebGLRenderer({
-      antialias:true,
+      antialias:false,
       powerPreference:"high-performance"
     });
-    renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+    renderer.setPixelRatio(1);
     renderer.setSize(el.clientWidth,el.clientHeight);
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.shadowMap.enabled=false;
@@ -436,10 +437,19 @@ export default function EgeaRealEPC(){
     }
 
     const loader=new GLTFLoader();
+    let loadFinished=false;
+    const loadTimeout=window.setTimeout(()=>{
+      if(!loadFinished){
+        setLoadError("3D model 20 saniye içinde yüklenemedi. Model dosyası veya sunucu yanıtı kontrol edilmeli.");
+      }
+    },20000);
 
     loader.load(
       "/models/fiat-egea-real-epc.glb",
       gltf=>{
+        loadFinished=true;
+        window.clearTimeout(loadTimeout);
+        setLoadError(null);
         modelRoot=gltf.scene;
         scene.add(modelRoot);
 
@@ -520,10 +530,10 @@ export default function EgeaRealEPC(){
       },
       undefined,
       error=>{
-        console.error(
-          "Egea GLB yüklenemedi",
-          error
-        );
+        loadFinished=true;
+        window.clearTimeout(loadTimeout);
+        console.error("Egea GLB yüklenemedi",error);
+        setLoadError("3D model yüklenemedi. /models/fiat-egea-real-epc.glb dosyasını kontrol edin.");
       }
     );
 
@@ -660,6 +670,7 @@ export default function EgeaRealEPC(){
     render();
 
     return()=>{
+      window.clearTimeout(loadTimeout);
       cancelAnimationFrame(animation);
 
       observer.disconnect();
