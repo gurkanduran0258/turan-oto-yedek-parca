@@ -3,8 +3,8 @@ import {createClient} from "@supabase/supabase-js";
 
 export const dynamic="force-dynamic";
 
-export async function GET(req:NextRequest){
-  const oem=req.nextUrl.searchParams.get("oem")?.trim();
+export async function GET(request:NextRequest){
+  const oem=request.nextUrl.searchParams.get("oem")?.trim();
 
   if(!oem){
     return NextResponse.json({product:null});
@@ -23,7 +23,10 @@ export async function GET(req:NextRequest){
   }
 
   const supabase=createClient(url,key,{
-    auth:{persistSession:false,autoRefreshToken:false}
+    auth:{
+      persistSession:false,
+      autoRefreshToken:false
+    }
   });
 
   const {data,error}=await supabase
