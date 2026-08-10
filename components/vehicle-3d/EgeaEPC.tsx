@@ -4,7 +4,15 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import * as THREE from "three";
 import {GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader.js";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls.js";
-import {GROUPS,PARTS,isBodyMesh,isWheelMesh,partForMesh,type GroupId,type CatalogPart} from "@/lib/egea-epc";
+import {
+  GROUPS,
+  PARTS as EGEA_PARTS,
+  isBodyMesh as isEgeaBodyMesh,
+  isWheelMesh as isEgeaWheelMesh,
+  type GroupId,
+  type CatalogPart
+} from "@/lib/egea-epc";
+import {GRIZZLY_PARTS} from "@/lib/grizzly-parts";
 
 const EXPLODE:Record<GroupId,THREE.Vector3>={
   "dis-govde":new THREE.Vector3(0,0,0),
@@ -27,6 +35,54 @@ type Product={
   image_url:string|null;
 };
 
+type VehicleId="egea"|"grizzly";
+
+type VehicleConfig={
+  id:VehicleId;
+  title:string;
+  modelUrl:string;
+};
+
+const VEHICLES:VehicleConfig[]=[
+  {id:"egea",title:"Fiat Egea",modelUrl:"/models/fiat-egea-catalog.glb"},
+  {id:"grizzly",title:"Fiat Grizzly",modelUrl:"/models/fiat-grizzly-catalog.glb"},
+];
+
+const GRIZZLY_CATALOG_PARTS:CatalogPart[]=GRIZZLY_PARTS.map((p)=>({
+  id:p.id,
+  title:p.title,
+  group:p.group as GroupId,
+  match:p.mesh,
+  oemCodes:[],
+}));
+
+function vehicleParts(vehicle:VehicleId):CatalogPart[]{
+  return vehicle==="grizzly"?GRIZZLY_CATALOG_PARTS:EGEA_PARTS;
+}
+
+function partForVehicleMesh(vehicle:VehicleId,name:string){
+  const n=name.toLowerCase();
+  return vehicleParts(vehicle).find((p)=>
+    p.match.some((m)=>n.includes(m.toLowerCase()))
+  );
+}
+
+function isGrizzlyBodyMesh(name:string){
+  const n=name.toLowerCase();
+  return [
+    "body_shell","hood","front_bumper","rear_bumper",
+    "front_fender","rear_quarter","door_","trunk",
+    "headlight","taillight","front_led","rear_led",
+    "grille","mirror_","windshield","rear_glass",
+    "side_glass","rocker_","wheelarch_","roof"
+  ].some((x)=>n.includes(x));
+}
+
+function isGrizzlyWheelMesh(name:string){
+  const n=name.toLowerCase();
+  return n.includes("tire_")||n.includes("rim_");
+}
+
 function formatMoney(value:number){
   return new Intl.NumberFormat("tr-TR",{
     style:"currency",
@@ -35,6 +91,7 @@ function formatMoney(value:number){
 }
 
 export default function EgeaEPC(){
+ const [vehicle,setVehicle]=useState<VehicleId>("egea");
  const mount=useRef<HTMLDivElement>(null);
  const api=useRef<{setGroup:(g:GroupId)=>void;select:(p:CatalogPart)=>void}|null>(null);
  const [group,setGroupState]=useState<GroupId>("dis-govde");
@@ -42,7 +99,9 @@ export default function EgeaEPC(){
  const [loaded,setLoaded]=useState(false);
  const [selectedProducts,setSelectedProducts]=useState<Product[]>([]);
  const [oemLoading,setOemLoading]=useState(false);
- const parts=useMemo(()=>PARTS.filter(p=>p.group===group),[group]);
+ const allParts=useMemo(()=>vehicleParts(vehicle),[vehicle]);
+ const parts=useMemo(()=>allParts.filter(p=>p.group===group),[allParts,group]);
+ const vehicleTitle=VEHICLES.find(v=>v.id===vehicle)?.title||"Fiat";
 
  async function loadSelectedProducts(part:CatalogPart){
    setOemLoading(true);
@@ -73,8 +132,8 @@ export default function EgeaEPC(){
 
    const candidates=[
      part.title,
-     `${part.title} Egea`,
-     `${words.join(" ")} Egea`,
+     `${part.title} ${vehicleTitle}`,
+     `${words.join(" ")} ${vehicleTitle}`,
      words.join(" "),
      position&&words.length?`${position} ${words.join(" ")}`:"",
      position&&words.length?`${words.join(" ")} ${position}`:"",
@@ -113,8 +172,8 @@ export default function EgeaEPC(){
      if(position&&hay.includes(normalize(position))) score+=2;
      if(direction&&hay.includes(normalize(direction))) score+=2;
 
-     // Egea adı varsa öncelik ver ama zorunlu tutma.
-     if(hay.includes("egea")) score+=2;
+     // Seçili araç adı varsa öncelik ver ama zorunlu tutma.
+     if(hay.includes(vehicle==="grizzly"?"grizzly":"egea")) score+=2;
 
      return score;
    }
@@ -167,6 +226,7 @@ export default function EgeaEPC(){
 
  useEffect(()=>{
   if(!mount.current)return;
+  setLoaded(false);
   const el=mount.current;
   const scene=new THREE.Scene(); scene.background=new THREE.Color(0xf7f7f7);
   const camera=new THREE.PerspectiveCamera(34,el.clientWidth/el.clientHeight,.05,100);
@@ -201,8 +261,10 @@ export default function EgeaEPC(){
     currentGroup=g; reset();
     states.forEach(s=>{
       const n=s.mesh.name.toLowerCase();
-      const p=partForMesh(n);
-      const body=isBodyMesh(n), wheel=isWheelMesh(n), mech=n.includes("mechanical_");
+      const p=partForVehicleMesh(vehicle,n);
+      const body=vehicle==="grizzly"?isGrizzlyBodyMesh(n):isEgeaBodyMesh(n);
+      const wheel=vehicle==="grizzly"?isGrizzlyWheelMesh(n):isEgeaWheelMesh(n);
+      const mech=n.includes("mechanical_");
       if(g==="dis-govde"){ s.mesh.visible=!mech; }
       if(g==="on-grup"){
         s.mesh.visible=body||wheel||["mechanical_radiator","mechanical_intercooler"].some(x=>n.includes(x));
@@ -265,13 +327,14 @@ export default function EgeaEPC(){
     });
   };
 
-  new GLTFLoader().load("/models/fiat-egea-catalog.glb",g=>{
+  const modelUrl=VEHICLES.find(v=>v.id===vehicle)?.modelUrl||"/models/fiat-egea-catalog.glb";
+  new GLTFLoader().load(modelUrl,g=>{
     const root=g.scene; scene.add(root);
     root.traverse(o=>{
       if(!(o instanceof THREE.Mesh))return;
       o.castShadow=true;o.receiveShadow=true;
       states.push({mesh:o,pos:o.position.clone(),material:o.material,visible:o.visible});
-      if(partForMesh(o.name))selectable.push(o);
+      if(partForVehicleMesh(vehicle,o.name))selectable.push(o);
     });
     // Ölçeği tüm GLB'ye göre değil, sadece Egea dış gövdesine göre hesapla.
     // Mekanik meshlerin bazıları model sınırlarını çok büyüttüğü için araç küçücük görünüyordu.
@@ -282,7 +345,7 @@ export default function EgeaEPC(){
 
     root.traverse(o=>{
       if(!(o instanceof THREE.Mesh))return;
-      if(!isBodyMesh(o.name) && !isWheelMesh(o.name))return;
+      if(!(vehicle==="grizzly"?isGrizzlyBodyMesh(o.name):isEgeaBodyMesh(o.name)) && !(vehicle==="grizzly"?isGrizzlyWheelMesh(o.name):isEgeaWheelMesh(o.name)))return;
 
       const meshBox=new THREE.Box3().setFromObject(o);
       if(meshBox.isEmpty())return;
@@ -306,7 +369,7 @@ export default function EgeaEPC(){
 
     root.traverse(o=>{
       if(!(o instanceof THREE.Mesh))return;
-      if(!isBodyMesh(o.name) && !isWheelMesh(o.name))return;
+      if(!(vehicle==="grizzly"?isGrizzlyBodyMesh(o.name):isEgeaBodyMesh(o.name)) && !(vehicle==="grizzly"?isGrizzlyWheelMesh(o.name):isEgeaWheelMesh(o.name)))return;
 
       const meshBox=new THREE.Box3().setFromObject(o);
       if(meshBox.isEmpty())return;
@@ -344,7 +407,7 @@ export default function EgeaEPC(){
     for(const mesh of selectable){
       if(!mesh.visible)continue;
 
-      const part=partForMesh(mesh.name);
+      const part=partForVehicleMesh(vehicle,mesh.name);
       if(!part)continue;
 
       const box=new THREE.Box3().setFromObject(mesh);
@@ -375,7 +438,7 @@ export default function EgeaEPC(){
     )[0];
 
     const p=hit
-      ?partForMesh(hit.object.name)
+      ?partForVehicleMesh(vehicle,hit.object.name)
       :nearestPart(e.clientX,e.clientY);
 
     if(p){
@@ -390,7 +453,7 @@ export default function EgeaEPC(){
   const ro=new ResizeObserver(()=>{camera.aspect=el.clientWidth/el.clientHeight;camera.updateProjectionMatrix();renderer.setSize(el.clientWidth,el.clientHeight)});ro.observe(el);
   let id=0; const loop=()=>{controls.update();renderer.render(scene,camera);id=requestAnimationFrame(loop)};loop();
   return()=>{cancelAnimationFrame(id);ro.disconnect();renderer.domElement.removeEventListener("pointerdown",click);controls.dispose();renderer.dispose();el.innerHTML=""};
- },[]);
+ },[vehicle]);
 
  const changeGroup=(g:GroupId)=>{
    setGroupState(g);
@@ -407,14 +470,40 @@ export default function EgeaEPC(){
 
  return <div className="epc">
   <aside className="tree">
-   <div className="brand"><b>FIAT EGEA</b><span>Resimli Parça Kataloğu</span></div>
+   <div className="brand"><b>{vehicleTitle.toUpperCase()}</b><span>Resimli Parça Kataloğu</span></div>
+   <div className="vehicleSelect">
+     <button
+       type="button"
+       className={vehicle==="egea"?"v active":"v"}
+       onClick={()=>{
+         setVehicle("egea");
+         setGroupState("dis-govde");
+         setSelected(null);
+         setSelectedProducts([]);
+       }}
+     >
+       Fiat Egea
+     </button>
+     <button
+       type="button"
+       className={vehicle==="grizzly"?"v active":"v"}
+       onClick={()=>{
+         setVehicle("grizzly");
+         setGroupState("dis-govde");
+         setSelected(null);
+         setSelectedProducts([]);
+       }}
+     >
+       Fiat Grizzly
+     </button>
+   </div>
    {GROUPS.map(g=><div key={g.id}>
     <button className={group===g.id?"g active":"g"} onClick={()=>changeGroup(g.id)}>› {g.title}</button>
     {group===g.id&&<div className="children">{parts.map(p=><button key={p.id} className={selected?.id===p.id?"p sel":"p"} onClick={()=>choose(p)}>{p.title}</button>)}</div>}
    </div>)}
   </aside>
   <section className="main">
-   <div className="top"><div><small>LEVHA</small><b>{GROUPS.find(x=>x.id===group)?.title} Açılımlı Görünümü</b></div><span>Fare: döndür · Tekerlek: yakınlaştır · Parçaya tıkla</span></div>
+   <div className="top"><div><small>LEVHA</small><b>{vehicleTitle} · {GROUPS.find(x=>x.id===group)?.title} Açılımlı Görünümü</b></div><span>Fare: döndür · Tekerlek: yakınlaştır · Parçaya tıkla</span></div>
    <div className="viewer" ref={mount}>{!loaded&&<div className="loading">Egea kataloğu yükleniyor…</div>}</div>
   </section>
   <aside className="list">
@@ -473,6 +562,9 @@ export default function EgeaEPC(){
    .epc{display:grid;grid-template-columns:245px minmax(500px,1fr) 430px;height:calc(100vh - 135px);min-height:650px;background:#fff;border-top:1px solid #ddd}
    .tree,.list{overflow:auto;background:#fff}.tree{border-right:1px solid #ccc}.list{border-left:1px solid #ccc}
    .brand{padding:18px;border-bottom:1px solid #ddd}.brand b,.brand span{display:block}.brand b{font-size:22px}.brand span{font-size:12px;color:#777;margin-top:4px}
+   .vehicleSelect{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;border-bottom:1px solid #ddd}
+   .v{border:1px solid #ddd;background:#fff;padding:9px 6px;font-weight:800;cursor:pointer}
+   .v.active{background:#c90019;color:#fff;border-color:#c90019}
    .g{width:100%;border:0;border-bottom:1px solid #e5e5e5;background:#f7f7f7;text-align:left;padding:14px;font-weight:900;cursor:pointer}.g.active{background:#c90019;color:#fff}
    .children{padding:5px 0}.p{display:block;width:100%;border:0;background:white;text-align:left;padding:9px 18px 9px 28px;cursor:pointer}.p:hover,.p.sel{background:#fff0f1;color:#b50016;font-weight:800}
    .main{display:flex;min-width:0;flex-direction:column}.top{height:58px;padding:10px 16px;border-bottom:1px solid #ccc;display:flex;justify-content:space-between;align-items:center;background:#f6f6f6}.top small,.top b{display:block}.top small{font-size:10px;color:#777}.top span{font-size:11px;color:#777}
