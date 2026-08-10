@@ -1,0 +1,570 @@
+.page{
+  min-height:100vh;
+  background:#f3f4f5;
+  color:#151515;
+  font-family:Arial,Helvetica,sans-serif;
+}
+.vehicleBar{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  min-height:70px;
+  padding:10px 14px;
+  background:#fff;
+  border-bottom:1px solid #dedede;
+}
+.selector{
+  width:230px;
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 12px;
+  border:1px solid #d7d7d7;
+  border-radius:7px;
+  background:#fff;
+}
+.selector i{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#c9001c;
+  color:#fff;
+  font-size:8px;
+  font-style:normal;
+  font-weight:900;
+}
+.selector small,.selector b{display:block}
+.selector small{
+  color:#929292;
+  font-size:8px;
+}
+.selector b{
+  margin-top:2px;
+  font-size:12px;
+}
+.selector>span{
+  margin-left:auto;
+  color:#aaa;
+}
+.breadcrumb{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  padding:0 15px;
+  background:#fff;
+  border-bottom:1px solid #ddd;
+  color:#686868;
+  font-size:10px;
+}
+.breadcrumb span{margin:0 8px;color:#aaa}
+
+.layout{
+  display:grid;
+  grid-template-columns:230px minmax(620px,1fr) 300px;
+  gap:12px;
+  padding:12px;
+}
+.left,.right{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.darkCard{
+  overflow:hidden;
+  border-radius:7px;
+  background:#202225;
+  color:#fff;
+}
+.darkCard>h3{
+  margin:0;
+  padding:12px 13px;
+  border-bottom:1px solid #393b3d;
+  font-size:10px;
+}
+.groupButton{
+  width:100%;
+  min-height:45px;
+  display:grid;
+  grid-template-columns:25px 1fr 16px;
+  align-items:center;
+  padding:0 12px;
+  border:0;
+  border-bottom:1px solid #35373a;
+  background:#242629;
+  color:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.groupButton b{font-size:10px}
+.groupActive{
+  background:linear-gradient(90deg,#d00820,#e62531);
+}
+.infoRow{
+  display:grid;
+  grid-template-columns:82px 1fr;
+  gap:8px;
+  padding:6px 13px;
+  font-size:9px;
+}
+.infoRow span{color:#bbb}
+
+.toggle,.fullScreen{
+  width:100%;
+  min-height:37px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 13px;
+  border:0;
+  background:transparent;
+  color:#fff;
+  font-size:9px;
+  cursor:pointer;
+}
+.toggle i{
+  width:31px;
+  height:17px;
+  padding:2px;
+  border-radius:20px;
+  background:#666;
+}
+.toggle i u{
+  width:13px;
+  height:13px;
+  display:block;
+  border-radius:50%;
+  background:#fff;
+  text-decoration:none;
+}
+.toggle i.toggleOn{background:#e31a2d}
+.toggle i.toggleOn u{transform:translateX(14px)}
+
+.center{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:9px;
+}
+.viewer{
+  position:relative;
+  height:500px;
+  overflow:hidden;
+  border:1px solid #ddd;
+  border-radius:7px;
+  background:#fff;
+}
+.tools{
+  position:absolute;
+  z-index:20;
+  top:11px;
+  left:11px;
+  display:flex;
+  gap:4px;
+}
+.tools button{
+  width:38px;
+  height:38px;
+  border:1px solid #ddd;
+  border-radius:5px;
+  background:#fff;
+  color:#222;
+  cursor:pointer;
+}
+.vehicleCanvas{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(78%,760px);
+  aspect-ratio:4/3;
+  transform:translate(-50%,-50%);
+}
+.explodedCanvas{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(92%,1100px);
+  aspect-ratio:1200/330;
+  transform:translate(-50%,-50%);
+}
+.canvasImage{
+  object-fit:contain!important;
+}
+.xray{
+  opacity:.30;
+  filter:grayscale(1);
+}
+.hitLayer{
+  position:absolute;
+  inset:0;
+  z-index:15;
+  pointer-events:none;
+}
+.hit{
+  position:absolute;
+  pointer-events:auto;
+  border:1px solid transparent;
+  border-radius:6px;
+  background:transparent;
+  cursor:pointer;
+}
+.hit:hover{
+  border-color:#e21a2b;
+  background:rgba(226,26,43,.08);
+}
+.hitActive{
+  border:2px solid #e21a2b;
+  background:rgba(226,26,43,.14);
+}
+
+.views{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:8px;
+}
+.views button{
+  min-height:108px;
+  padding:5px;
+  border:1px solid #ddd;
+  border-radius:6px;
+  background:#fff;
+  cursor:pointer;
+}
+.views button.viewActive{
+  border:2px solid #e31a2c;
+  padding:4px;
+}
+.thumbImage{
+  position:relative;
+  height:76px;
+  display:block;
+  overflow:hidden;
+}
+.thumbImage img{
+  object-fit:contain!important;
+}
+.views b{
+  display:block;
+  margin-top:4px;
+  font-size:9px;
+  font-weight:500;
+}
+
+.explodedPanel{
+  height:345px;
+  overflow:hidden;
+  border:1px solid #ddd;
+  border-radius:7px;
+  background:#fff;
+}
+.explodedPanel>header{
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 13px;
+  border-bottom:1px solid #eee;
+}
+.explodedPanel>header b{
+  color:#df182a;
+  font-size:10px;
+}
+.explodedPanel>header span{
+  color:#777;
+  font-size:9px;
+}
+.explodedPreview{
+  position:relative;
+  height:307px;
+}
+.explodedPreviewCanvas{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(94%,1120px);
+  aspect-ratio:1200/330;
+  transform:translate(-50%,-50%);
+}
+
+.partsPanel,.selectedPanel{
+  overflow:hidden;
+  border:1px solid #ddd;
+  border-radius:7px;
+  background:#fff;
+}
+.partsPanel>header{
+  min-height:62px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px;
+  border-bottom:1px solid #ddd;
+}
+.partsPanel header small{
+  display:block;
+  color:#999;
+  font-size:8px;
+}
+.partsPanel header h2{
+  margin:2px 0 0;
+  font-size:13px;
+}
+.partsPanel header>span{
+  color:#999;
+  font-size:8px;
+}
+.partsList{
+  max-height:655px;
+  overflow:auto;
+}
+.partsList button{
+  width:100%;
+  min-height:49px;
+  display:grid;
+  grid-template-columns:42px 1fr 16px;
+  gap:8px;
+  align-items:center;
+  padding:4px 8px;
+  border:0;
+  border-bottom:1px solid #eee;
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.partsList button.partSelected{
+  background:#fff0f1;
+}
+.partImage{
+  position:relative;
+  width:38px;
+  height:38px;
+  overflow:hidden;
+  border-radius:50%;
+  background:#f5f5f5;
+}
+.partImage img{
+  object-fit:contain!important;
+}
+.partText b{
+  display:block;
+  font-size:9px;
+}
+.partText small{
+  display:block;
+  margin-top:3px;
+  color:#999;
+  font-size:8px;
+}
+.chevron{
+  color:#999;
+  font-size:17px;
+}
+
+.selectedPanel{
+  padding:11px;
+}
+.selectedPanel>h3{
+  margin:0 0 11px;
+  font-size:9px;
+}
+.selectedTop{
+  display:grid;
+  grid-template-columns:92px 1fr;
+  gap:9px;
+}
+.selectedImage{
+  position:relative;
+  height:82px;
+  overflow:hidden;
+  border-radius:5px;
+  background:#f6f6f6;
+}
+.selectedImage img{
+  object-fit:contain!important;
+}
+.selectedTop h2{
+  margin:0 0 6px;
+  font-size:13px;
+}
+.selectedTop p{
+  margin:4px 0;
+  font-size:8px;
+}
+.inStock{color:#168a3b}
+.outStock{color:#999}
+.price{
+  margin-top:9px;
+  color:#df1728;
+  font-size:18px;
+  font-weight:900;
+}
+.cart,.favorite{
+  width:100%;
+  min-height:37px;
+  display:grid;
+  place-items:center;
+  margin-top:7px;
+  border-radius:4px;
+  text-decoration:none;
+  font-size:9px;
+  font-weight:900;
+}
+.cart{
+  border:0;
+  background:#db1728;
+  color:#fff;
+}
+.disabled{opacity:.45}
+.favorite{
+  border:1px solid #ddd;
+  background:#fff;
+  color:#888;
+}
+
+@media(max-width:1200px){
+  .layout{
+    grid-template-columns:210px minmax(560px,1fr);
+  }
+  .right{
+    grid-column:1/-1;
+    display:grid;
+    grid-template-columns:1fr 310px;
+  }
+  .partsList{max-height:390px}
+}
+@media(max-width:820px){
+  .vehicleBar{overflow:auto}
+  .layout{display:block}
+  .left,.center,.right{margin-bottom:12px}
+  .right{display:block}
+  .viewer{height:410px}
+  .vehicleCanvas{width:95%}
+  .views{grid-template-columns:repeat(3,1fr)}
+}
+
+
+/* V7 selected part focus */
+.focusScene{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:#fff;
+}
+
+.backgroundVehicle{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(78%,760px);
+  aspect-ratio:4/3;
+  transform:translate(-50%,-50%);
+  opacity:.18;
+  filter:grayscale(.65);
+}
+
+.backgroundImage{
+  object-fit:contain!important;
+}
+
+.focusCard{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(72%,620px);
+  min-height:235px;
+  transform:translate(-50%,-50%);
+  display:grid;
+  grid-template-columns:250px 1fr;
+  align-items:center;
+  gap:25px;
+  padding:24px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  background:rgba(255,255,255,.97);
+  box-shadow:0 14px 40px rgba(0,0,0,.15);
+  z-index:4;
+}
+
+.focusPartImage{
+  position:relative;
+  height:185px;
+  overflow:hidden;
+  border-radius:10px;
+  background:#f5f5f5;
+}
+
+.focusPartImage img{
+  object-fit:contain!important;
+}
+
+.focusMeta small{
+  display:block;
+  color:#d71920;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.5px;
+}
+
+.focusMeta h2{
+  margin:6px 0 10px;
+  font-size:23px;
+}
+
+.focusMeta p{
+  margin:0 0 14px;
+  color:#666;
+  font-size:11px;
+}
+
+.focusMeta button{
+  min-height:38px;
+  padding:0 15px;
+  border:1px solid #ddd;
+  border-radius:5px;
+  background:#fff;
+  color:#333;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.modeBadge{
+  position:absolute;
+  right:14px;
+  top:14px;
+  padding:7px 10px;
+  border-radius:5px;
+  background:#d71920;
+  color:#fff;
+  font-size:9px;
+  font-weight:900;
+  z-index:18;
+}
+
+.showPartButton{
+  width:100%;
+  min-height:37px;
+  display:grid;
+  place-items:center;
+  margin-top:8px;
+  border:1px solid #d71920;
+  border-radius:4px;
+  background:#fff;
+  color:#d71920;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+@media(max-width:900px){
+  .focusCard{
+    width:90%;
+    grid-template-columns:180px 1fr;
+  }
+
+  .focusPartImage{
+    height:150px;
+  }
+}
