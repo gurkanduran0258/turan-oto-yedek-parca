@@ -1,11 +1,10 @@
 import type {Metadata} from "next";
-import VehicleEPC from "@/components/vehicle-3d/VehicleEPC";
+import EgeaEPC from "@/components/vehicle-3d/EgeaEPC";
 
 export const metadata:Metadata={
-  title:"Fiat Resimli Parça Kataloğu | Turan Oto",
-  description:"Fiat Egea, Doblo ve Fiorino resimli yedek parça kataloğu"
+  title:"Fiat Egea Resimli Parça Kataloğu | Turan Oto"
 };
 
 export default function Page(){
-  return <main><VehicleEPC/></main>;
+  return <main><EgeaEPC/></main>;
 }
