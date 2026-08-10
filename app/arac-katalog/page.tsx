@@ -1,10 +1,10 @@
 import type {Metadata} from "next";
-import Doblo3DEPC from "@/components/catalog/Doblo3DEPC";
+import EgeaRealEPC from "@/components/catalog/EgeaRealEPC";
 
 export const metadata:Metadata={
-  title:"Fiat Doblo 3D Parça Kataloğu | Turan Oto"
+  title:"Fiat Egea Gerçek 3D Parça Kataloğu | Turan Oto"
 };
 
 export default function Page(){
-  return <Doblo3DEPC/>;
+  return <EgeaRealEPC/>;
 }
