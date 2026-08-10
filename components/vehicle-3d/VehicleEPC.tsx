@@ -71,16 +71,31 @@ export default function VehicleEPC(){
 
   useEffect(()=>{
     let cancelled=false;
+
     async function run(){
       setLoadingOem(true);
-      const entries=await Promise.all(
-        parts.map(async p=>[p.id,await searchPartProducts(p)] as const)
-      );
+
+      // Aynı anda çok sayıda API isteği atma.
+      // Cache'de olmayan parçaları sırayla getir.
+      for(const p of parts){
+        if(cancelled)break;
+        if(oemMap[p.id])continue;
+
+        const rows=await searchPartProducts(p);
+
+        if(!cancelled){
+          setOemMap(prev=>({
+            ...prev,
+            [p.id]:rows
+          }));
+        }
+      }
+
       if(!cancelled){
-        setOemMap(prev=>({...prev,...Object.fromEntries(entries)}));
         setLoadingOem(false);
       }
     }
+
     void run();
     return()=>{cancelled=true};
   },[group]);
@@ -100,11 +115,11 @@ export default function VehicleEPC(){
     );
     camera.position.set(6.4,3.0,7.0);
 
-    const renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
     renderer.setSize(el.clientWidth,el.clientHeight);
     renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.enabled=false;
     el.appendChild(renderer.domElement);
 
     const controls=new OrbitControls(camera,renderer.domElement);
@@ -125,11 +140,18 @@ export default function VehicleEPC(){
     let root:THREE.Object3D|null=null;
     let currentGroup:GroupId="dis-govde";
 
+    const materialCache=new Map<string,THREE.Material>();
+
     const cloneMat=(m:THREE.Material,opacity=1)=>{
+      const key=`${m.uuid}:${opacity.toFixed(3)}`;
+      const cached=materialCache.get(key);
+      if(cached)return cached;
+
       const c=m.clone() as THREE.MeshStandardMaterial;
       c.transparent=opacity<1;
       c.opacity=opacity;
       c.depthWrite=opacity>=.45;
+      materialCache.set(key,c);
       return c;
     };
 
@@ -222,28 +244,27 @@ export default function VehicleEPC(){
         }
 
         if(g==="motor"){
-          s.mesh.visible=body||wheel||mech;
-          if(body)setOpacity(s.mesh,.075);
-          if(mech&&![
+          const wantedMech=[
             "mechanical_engine","mechanical_transmission",
             "mechanical_turbo","mechanical_intake",
             "mechanical_transfercase","mechanical_driveshaft",
             "mechanical_exhaust"
-          ].some(x=>n.includes(x)))setOpacity(s.mesh,.08);
+          ].some(x=>n.includes(x));
+
+          s.mesh.visible=body||wheel||wantedMech;
+          if(body)setOpacity(s.mesh,.07);
         }
 
         if(g==="on-takim"){
-          s.mesh.visible=body||wheel||mech;
-          if(body)setOpacity(s.mesh,.065);
-          if(mech&&!n.includes("_front"))setOpacity(s.mesh,.055);
+          const wantedMech=mech&&n.includes("_front");
+          s.mesh.visible=body||wheel||wantedMech;
+          if(body)setOpacity(s.mesh,.06);
         }
 
         if(g==="arka-takim"){
-          s.mesh.visible=body||wheel||mech;
-          if(body)setOpacity(s.mesh,.065);
-          if(mech&&!n.includes("_rear")&&!n.includes("torsion")){
-            setOpacity(s.mesh,.055);
-          }
+          const wantedMech=mech&&(n.includes("_rear")||n.includes("torsion"));
+          s.mesh.visible=body||wheel||wantedMech;
+          if(body)setOpacity(s.mesh,.06);
         }
       }
 
@@ -269,10 +290,7 @@ export default function VehicleEPC(){
       // böylece kapılar aracın içine düşmüyor.
 
       root?.updateMatrixWorld(true);
-      if(fit)setTimeout(
-        ()=>fitVisible(g==="on-grup"||g==="arka-grup"?1.06:1.14),
-        0
-      );
+      if(fit)requestAnimationFrame(()=>fitVisible(g==="on-grup"||g==="arka-grup"?1.08:1.16));
     }
 
     function selectPart(p:CatalogPart){
@@ -283,11 +301,16 @@ export default function VehicleEPC(){
         if(!p.match.some(x=>n.includes(x)))continue;
 
         const hi=(m:THREE.Material)=>{
+          const key=`highlight:${m.uuid}`;
+          const cached=materialCache.get(key);
+          if(cached)return cached;
+
           const c=m.clone() as THREE.MeshStandardMaterial;
           if("emissive" in c){
             c.emissive=new THREE.Color(0xd71920);
-            c.emissiveIntensity=1.15;
+            c.emissiveIntensity=.9;
           }
+          materialCache.set(key,c);
           return c;
         };
 
@@ -296,7 +319,7 @@ export default function VehicleEPC(){
       }
 
       root?.updateMatrixWorld(true);
-      setTimeout(()=>fitVisible(1.10),0);
+      requestAnimationFrame(()=>fitVisible(1.12));
     }
 
     new GLTFLoader().load(
@@ -307,8 +330,8 @@ export default function VehicleEPC(){
 
         root.traverse(o=>{
           if(!(o instanceof THREE.Mesh))return;
-          o.castShadow=true;
-          o.receiveShadow=true;
+          o.castShadow=false;
+          o.receiveShadow=false;
           states.push({
             mesh:o,pos:o.position.clone(),
             material:o.material,visible:o.visible
@@ -411,6 +434,12 @@ export default function VehicleEPC(){
     };
 
     renderer.domElement.addEventListener("pointerdown",click);
+
+    const onContextLost=(event:Event)=>{
+      event.preventDefault();
+      setModelError("3D görüntü kartı sıfırlandı. Sayfayı yenile.");
+    };
+    renderer.domElement.addEventListener("webglcontextlost",onContextLost);
     api.current={setGroup:applyGroup,select:selectPart};
 
     const ro=new ResizeObserver(()=>{
@@ -432,7 +461,14 @@ export default function VehicleEPC(){
       cancelAnimationFrame(id);
       ro.disconnect();
       renderer.domElement.removeEventListener("pointerdown",click);
+      renderer.domElement.removeEventListener("webglcontextlost",onContextLost);
       controls.dispose();
+
+      for(const material of materialCache.values()){
+        material.dispose();
+      }
+      materialCache.clear();
+
       renderer.dispose();
       api.current=null;
       el.innerHTML="";
