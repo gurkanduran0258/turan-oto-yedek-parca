@@ -48,13 +48,84 @@ export default function EgeaEPC(){
    setOemLoading(true);
    setSelectedProducts([]);
 
-   const terms=[part.title];
+   const title=part.title
+     .replace(/İ/g,"I")
+     .replace(/ı/g,"i")
+     .toLocaleLowerCase("tr-TR")
+     .trim();
 
-   for(const term of terms){
+   // Ürün adları katalog adıyla birebir aynı olmak zorunda değil.
+   // Örn: "Ön Tampon" -> "TAMPON ÖN EGEA", "ÖN TAMPON KAPLAMA" vb.
+   const words=title
+     .split(/\s+/)
+     .filter(Boolean)
+     .filter(w=>!["sol","sağ","on","ön","arka"].includes(w));
+
+   const direction=
+     title.includes("sol")?"sol":
+     title.includes("sağ")?"sağ":
+     "";
+
+   const position=
+     title.includes("ön")?"ön":
+     title.includes("arka")?"arka":
+     "";
+
+   const candidates=[
+     part.title,
+     `${part.title} Egea`,
+     `${words.join(" ")} Egea`,
+     words.join(" "),
+     position&&words.length?`${position} ${words.join(" ")}`:"",
+     position&&words.length?`${words.join(" ")} ${position}`:"",
+     direction&&words.length?`${direction} ${words.join(" ")}`:"",
+     direction&&position&&words.length
+       ?`${direction} ${position} ${words.join(" ")}`
+       :"",
+     direction&&position&&words.length
+       ?`${words.join(" ")} ${position} ${direction}`
+       :"",
+   ].map(x=>x.trim()).filter(Boolean);
+
+   const uniqueTerms=[...new Set(candidates)];
+
+   function normalize(value:string){
+     return String(value||"")
+       .replace(/İ/g,"I")
+       .replace(/ı/g,"i")
+       .toLocaleLowerCase("tr-TR")
+       .replace(/[^a-z0-9çğıöşü\s]/g," ")
+       .replace(/\s+/g," ")
+       .trim();
+   }
+
+   function scoreProduct(product:Product){
+     const hay=normalize(
+       `${product.product_name||""} ${product.product_group||""}`
+     );
+
+     let score=0;
+
+     for(const word of words){
+       if(hay.includes(normalize(word))) score+=3;
+     }
+
+     if(position&&hay.includes(normalize(position))) score+=2;
+     if(direction&&hay.includes(normalize(direction))) score+=2;
+
+     // Egea adı varsa öncelik ver ama zorunlu tutma.
+     if(hay.includes("egea")) score+=2;
+
+     return score;
+   }
+
+   const collected=new Map<string,Product>();
+
+   for(const term of uniqueTerms){
      try{
        const params=new URLSearchParams({
          page:"1",
-         pageSize:"12",
+         pageSize:"50",
          search:term,
        });
 
@@ -68,14 +139,29 @@ export default function EgeaEPC(){
        const data=await response.json() as {products?:Product[]};
        const rows=Array.isArray(data.products)?data.products:[];
 
-       if(rows.length){
-         setSelectedProducts(rows);
-         setOemLoading(false);
-         return;
+       for(const row of rows){
+         const key=String(row.id||row.product_code);
+         if(!collected.has(key)){
+           collected.set(key,row);
+         }
        }
+
+       // Yeterli aday bulunduysa daha fazla API isteği atma.
+       if(collected.size>=20)break;
      }catch{}
    }
 
+   const ranked=[...collected.values()]
+     .map(product=>({
+       product,
+       score:scoreProduct(product),
+     }))
+     .filter(item=>item.score>0)
+     .sort((a,b)=>b.score-a.score)
+     .map(item=>item.product)
+     .slice(0,12);
+
+   setSelectedProducts(ranked);
    setOemLoading(false);
  }
 
