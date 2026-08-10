@@ -1,6 +1,7 @@
 export const GRIZZLY_PARTS = [
   { id:"hood", title:"Kaput", mesh:["hood"], group:"dis-govde" },
   { id:"front-bumper", title:"Ön Tampon", mesh:["front_bumper"], group:"on-grup" },
+  { id:"front-grille", title:"Ön Panjur", mesh:["front_upper_black","front_lower_grille"], group:"on-grup" },
   { id:"rear-bumper", title:"Arka Tampon", mesh:["rear_bumper"], group:"arka-grup" },
   { id:"fender-left", title:"Sol Ön Çamurluk", mesh:["front_fender_left"], group:"dis-govde" },
   { id:"fender-right", title:"Sağ Ön Çamurluk", mesh:["front_fender_right"], group:"dis-govde" },
@@ -13,6 +14,8 @@ export const GRIZZLY_PARTS = [
   { id:"headlight-right", title:"Sağ Ön Far", mesh:["headlight_right"], group:"on-grup" },
   { id:"taillight-left", title:"Sol Stop", mesh:["taillight_left"], group:"arka-grup" },
   { id:"taillight-right", title:"Sağ Stop", mesh:["taillight_right"], group:"arka-grup" },
+  { id:"mirror-left", title:"Sol Ayna", mesh:["mirror_left"], group:"dis-govde" },
+  { id:"mirror-right", title:"Sağ Ayna", mesh:["mirror_right"], group:"dis-govde" },
   { id:"radiator", title:"Radyatör", mesh:["mechanical_radiator"], group:"on-grup" },
   { id:"intercooler", title:"Intercooler", mesh:["mechanical_intercooler"], group:"on-grup" },
   { id:"engine", title:"Motor", mesh:["mechanical_engine"], group:"motor" },
