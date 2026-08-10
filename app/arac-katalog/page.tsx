@@ -1,10 +1,10 @@
 import type {Metadata} from "next";
-import DobloCatalogV7 from "@/components/catalog/DobloCatalogV7";
+import Doblo3DEPC from "@/components/catalog/Doblo3DEPC";
 
 export const metadata:Metadata={
-  title:"Fiat Doblo Resimli Parça Kataloğu | Turan Oto"
+  title:"Fiat Doblo 3D Parça Kataloğu | Turan Oto"
 };
 
 export default function Page(){
-  return <DobloCatalogV7/>;
+  return <Doblo3DEPC/>;
 }
