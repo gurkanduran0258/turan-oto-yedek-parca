@@ -6,5 +6,5 @@ export const metadata:Metadata={
 };
 
 export default function Page(){
-  return <main><EgeaEPC/></main>;
+  return <EgeaEPC/>;
 }
