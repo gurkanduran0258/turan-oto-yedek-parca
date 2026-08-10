@@ -1,10 +1,10 @@
 import type {Metadata} from "next";
-import DobloCatalogV3 from "@/components/catalog/DobloCatalogV3";
+import DobloCatalogV4 from "@/components/catalog/DobloCatalogV4";
 
 export const metadata:Metadata={
   title:"Fiat Doblo Resimli Parça Kataloğu | Turan Oto"
 };
 
 export default function Page(){
-  return <DobloCatalogV3/>;
+  return <DobloCatalogV4/>;
 }
